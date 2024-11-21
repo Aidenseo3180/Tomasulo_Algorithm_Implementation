@@ -1,0 +1,4 @@
+ADD R1, R2, R3
+MUL R4, R1, R5
+SUB R6, R4, R7
+ADDI R8, R9, 5

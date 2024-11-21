@@ -1,15 +1,46 @@
-class Instruction:
+
+class ProcessControlBlock:
     """
-    Class dedicated for the instruction
+    Tracks the progress of the individual instruction
     """
     def __init__(self, instruction):
 
         self._opcode = instruction[0]
         self._operand_1 = instruction[1]
         self._operand_2 = instruction[2]
+        self._operand_3 = instruction[3]
 
-        self._stage = 'ISSUE'   # initial stage of instruction in pipeline
-        self._is_stall = False  # indicator flag to indicate whether the instruction is in stall
+        self._current_stage = 'None'   # initial stage of instruction in pipeline
+        self._is_stall = False         # indicator flag to indicate whether the instruction is in stall
+
+        # Keeps a track of how many cycles instruction spent on each stage
+        # Each stage stores (from, to) # of cycles
+        self._stage_cycle_counter = {
+            "ISSUE": (),
+            "EX": (),
+            "MEM": (),
+            "WB": (),
+            "COMMIT": () 
+        }
+
+        # Dependency checker
+        self._is_dependent = False
+
+        # flag to note whether the instruction has been already executed (since we do not want to execute same instruction more than once)
+        self._is_executed = False
+
+        # flag to notify when to move to the next stage
+        self._move_to_next_stage = False
+        self._cycle_counter = 0     # this tracks the # of cycles instruction spent from each cycle -> if certain #, then move to next stage
+
+    def get_cycle_counter(self):
+        return self._cycle_counter
+    
+    def increment_cycle_counter(self):
+        self._cycle_counter += 1
+
+    def reset_cycle_counter(self):
+        self._cycle_counter = 0
 
     def get_opcode(self):
         return self._opcode
@@ -19,29 +50,33 @@ class Instruction:
     
     def get_operand_2(self):
         return self._operand_2
+    
+    def get_operand_3(self):
+        return self._operand_3
 
     def get_stage(self):
-        return self._stage
+        return self._current_stage
+    
+    def get_is_executed(self):
+        return self._is_executed
+    
+    def set_is_executed(self):
+        self._is_executed = True
+
+    def get_move_to_next_stage(self):
+        return self._move_to_next_stage
+    
+    def set_move_to_next_stage(self):
+        self._move_to_next_stage = True
+
+    def reset_move_to_next_stage(self):
+        self._move_to_next_stage = False
     
     def update_stage(self, stage_name):
-        self._stage = stage_name
+        self._current_stage = stage_name
 
-class Register:
-    """
-    Register
-    """
-    def __init__(self, val):
-        """
-        Args:
-            val(int): value the register holds
-        """
-        self._val = val
-
-    def get_val(self):
-        return self._val
-
-    def set_val(self, val):
-        self_val = val
+    def update_stage_cycle_counter(self, stage_name, from_cycle, to_cycle):
+        self._stage_cycle_counter[stage_name] = (from_cycle, to_cycle)
 
 class ReservationStation:
     """
@@ -49,21 +84,14 @@ class ReservationStation:
     """
     def __init__(self, capacity: int):
         self._capacity = capacity
-        self._reserv_statation = [None] * self.capacity
         self._is_full = False
 
-    def store_inst(self, inst: Instruction):
-        # Find free space in reservation station
-        for idx, content in self._reserv_statation:
-            if content is None:
-                self._reserv_statation[idx] = inst
-                return
-
-        # if there's no free space, set is_full as True
-        self._is_full = True
-
-    def check_is_full(self):
-        return self._is_full
+    def store_inst(self):
+        if self._capacity != 0:
+            self._capacity -= 1
+            return True  # successful store
+        
+        return False
 
 # TODO: I'll do this later
 class Memory:
@@ -82,24 +110,36 @@ class OperatingSystem:
     Class dedicated to conduct Tomasulo's Algorithm.
     Assume there's only 1 adder, 1 floating-point adder
     """
-    def __init__(self, inst_buffer: list, rc: int = 4, frc: int = 4, rg: int = 10, lrc: int = 4, strc: int = 4):
+    def __init__(self, inst_buffer: list, rc: int = 4, frc: int = 4, lrc: int = 4, strc: int = 4):
         """
         Args:
-            inst_buffer (Instruction): list of instructions in Instruction type
+            inst_buffer (list): list of instructions
             rc (int): adder reservation station capacity
             frc (int): floating-point adder reservation capacity
-            rg (int): number of registers
             lrc (int): load reservation station capacity
             strc (int): store reservation station capacity
         """
         self._inst_buffer = inst_buffer     # store all the given instructions
-        self._inst_in_pipeline = []         # list that keeps a track of "running instructions"
 
+        # TODO: do this later
         self._RAT = []      # RAT (source mapping)
         self._ARF = []      # Architecture Reg File
 
-        # Register
-        self._register = [Register(0)] * rg
+        self._active_instructions = []  # Keeps the ACTIVE inst
+
+        # Register (w/ initial values)
+        self._register = {
+            "R1": 0,
+            "R2": 0,
+            "R3": 0,
+            "R4": 0,
+            "R5": 0,
+            "R6": 0,
+            "R7": 0,
+            "R8": 0,
+            "R9": 0,
+            "R10": 0
+        }
 
         # Reservation stations
         self._adder_reserv_st = ReservationStation(rc)
@@ -109,11 +149,11 @@ class OperatingSystem:
 
         self._cycle = 0          # keep a track of cycles
 
-        if inst_buffer.empty():
+        if self._inst_buffer.empty():
             print("----- No instruction given to run, terminated -----")
             return
 
-        self.run()
+        self.run_pipeline()
 
     def find_free_reservation(self, inst):
         """
@@ -121,111 +161,165 @@ class OperatingSystem:
         """
 
         inst_type = inst.get_opcode()
-        is_full = False
+        is_successful = False
 
         if inst_type is "ADD" or inst_type is "ADDI" or inst_type is "SUB":     # For adder reservation station
-            self._adder_reserv_st.store_inst(inst)
-            is_full = self._adder_reserv_st.check_is_full()
+            is_successful = self._adder_reserv_st.store_inst(inst)
         
         if inst_type is "MULT" or inst_type is "DIVD":                          # For floating-point reservation station
-            self._fp_adder_reserv_st.store_inst(inst)
-            is_full = self._fp_adder_reserv_st.check_is_full()
+            is_successful = self._fp_adder_reserv_st.store_inst(inst)
 
         if inst_type is "LDR":
-            self._load_reserv_st.store_inst(inst)
-            is_full = self._load_reserv_st.check_is_full
+            is_successful = self._load_reserv_st.store_inst(inst)
 
         if inst_type is "STR":
-            self._store_reserv_st.store_inst(inst)
-            is_full = self._store_reserv_st.check_is_full
+            is_successful = self._store_reserv_st.store_inst(inst)
 
-        return is_full
+        return is_successful
 
-    def perform_operation(self, inst):
+    def perform_operation(self, inst: ProcessControlBlock):
         # Depends on the opcode, run different stages
         op = inst.get_opcode()
+        operand_1 = inst.get_operand_1()
+        operand_2 = inst.get_operand_2()
+        operand_3 = inst.get_operand_3()
+
+        current_stage = inst.get_stage()
+
+        is_executed = inst.get_is_executed()
+
+        # ---------- 3. Read operands that are in registers ----------------
+        # TODO: If not in register, find which reservation station will product it
         match(op):
             case 'ADD':
-                pass
+                if current_stage == "EX":
+                    if is_executed == False:
+                        # TODO: Update so that the result gets written in reservation station -> and during WB stage, write to Register
+                        self._register[operand_1] = self._register[operand_2] + self._register[operand_3]
+                        inst.set_is_executed()          # set the executed flag to True
+                        inst.set_move_to_next_stage()  # takes 1 cycle in EX
+                else:
+                    inst.set_move_to_next_stage()      # takes 1 cycle in WB, COMMIT
             case 'ADDI':
-                pass
+                if current_stage == "EX":
+                    if is_executed == False:
+                        self._register[operand_1] = self._register[operand_2] + operand_3
+                        inst.set_is_executed()
+                        inst.set_move_to_next_stage()  # takes 1 cycle in EX
+                else:
+                    inst.set_move_to_next_stage()      # takes 1 cycle in WB, COMMIT each
             case 'SUB':
-                pass
+                if current_stage == "EX":
+                    if is_executed == False:
+                        self._register[operand_1] = self._register[operand_2] - self._register[operand_3]
+                        inst.set_is_executed()
+                        inst.set_move_to_next_stage()  # takes 1 cycle in EX
+                else:
+                    inst.set_move_to_next_stage()      # takes 1 cycle in WB, COMMIT each
             case 'MULT':
-                pass
+                if current_stage == "EX":
+                    if is_executed == False:
+                        self._register[operand_1] = self._register[operand_2] * self._register[operand_3]
+                        inst.set_is_executed()
+                    else:
+                        if inst.get_cycle_counter < 2:
+                            inst.increment_cycle_counter()
+                        else:
+                            inst.set_move_to_next_stage()  # takes 2 cycles in EX
+                else:
+                    inst.set_move_to_next_stage()      # takes 1 cycle in WB, COMMIT each
+                    
             case 'DIVD':
-                pass
+                if current_stage == "EX":
+                    if is_executed == False:
+                        self._register[operand_1] = self._register[operand_2] / self._register[operand_3]
+                        inst.set_is_executed()
+                    else:
+                        if inst.get_cycle_counter < 2:
+                            inst.increment_cycle_counter()
+                        else:
+                            inst.set_move_to_next_stage()  # takes 2 cycles in EX
+                else:
+                    inst.set_move_to_next_stage()      # takes 1 cycle in WB, COMMIT each
+
             case 'LDR':
+                # TODO: implement LDR (LOAD)
                 pass
             case 'STR':
+                # TODO: implement STR (STORE)
                 pass
             case _:
-                print("Not supported")
+                print("--- WARNING: Opcode Not supported, thus ignored ---")
 
-    def pipeline(self, inst_list):
+    def run_pipeline(self):
         """
-        Runs each instruction in inst_in_pieline, progress their stages.
+        Run Tomasulo's Algorithm
+        Run each instruction in inst_in_pipeline, progress their stages.
         Keep a track of cycle
-        """
-        def update_inst_stage(inst):
+        """              
+
+        def update_inst_stage(inst: ProcessControlBlock):
+            
+            move_to_next = inst.get_move_to_next_stage()
+            if move_to_next == False:   # if can't move to next stage, don't
+                return
+
             curr_stage = inst.get_stage()
+            opcode = inst.get_opcode()
+
+            # keep a track of how many cycles spent in each stage before move to the next stage
+            cycle_spent = inst.get_cycle_counter()
+            inst.update_stage_cycle_counter(curr_stage, self._cycle, self._cycle + cycle_spent)
+
             match(curr_stage):
                 case "ISSUE":
                     inst.update_stage("EX")
                 case "EX":
-                    inst.update_stage("MEM")
+                    # Only LOAD and STORE use MEM
+                    if opcode == "LDR" or opcode == "STR":
+                        inst.update_stage("MEM")
+                    else:
+                        inst.update_stage("WB")
                 case "MEM":
                     inst.update_stage("WB")
                 case "WB":
                     inst.update_stage("COMMIT")
                 case "COMMIT":
-                    inst.update_stage("DONE")
+                    inst.update_stage("DONE")   # NOTE: When instruction reaches 'DONE', that's when it leaves the active instruction list
 
-        # Go through each instruction inside the list
-        for inst in inst_list:
-           update_inst_stage(inst)
+            # reset the flag and counter (bc we just used the counter to track # of cycles spent in each stage)
+            inst.reset_move_to_next_stage()
+            inst.reset_cycle_counter()
 
-
-        pass
-
-    def run(self):
-        """
-        Run Tomasulo's Algorithm
-        """
-
-        self._cycle += 1
-
-        # 1. Get next instruction from instruction buffer
+        # ---------- 1. Get next instruction from instruction buffer ------------
         # Repeatedly run until the instruction buffer is empty
-        if not self._inst_buffer.empty():
-            inst = self._inst_buffer.pop(0)
-            self._inst_in_pipeline.append(inst)
-        
-        # 2. Find a free reservation for it
-        # if not free, stall until one is
-        # NOTE: instruction CANNOT be issued when the corresponding reservation station is full
-        is_full = self.find_free_reservation(inst)
-            
-        if is_full is True:
-            pass    # TODO: stall
+        while(not self._inst_buffer.empty()):
 
-        # 3. Read operands that are in registers
-        # If not in register, find which reservation station will product it
+            self._cycle += 1
+            inst = ProcessControlBlock(self._inst_buffer[0])
 
-        if not self._inst_in_pipeline.empty():
-            self.pipeline(self._inst_in_pipeline)
+            # --------- 2. Find a free reservation for it ----------
+            # if not free, stall until one is
+            # NOTE: instruction CANNOT be issued when the corresponding reservation station is full
+            is_successful = self.find_free_reservation(inst)
 
+            # if there's a space in reservation -> remove inst from buffer & add to queue
+            # otherwise, stall (keep it in _inst_buffer)
+            if is_successful is True:
+                inst.update_stage_cycle_counter("ISSUE", self._cycle, self._cycle)
+                self._active_instructions.append(inst)  # Add to the active instruction queue (with instruction tracker)
+                del self._inst_buffer[0]
 
+            # iterate through the ACTIVE instructions to progress
+            for inst in self._active_instructions:
+                self.perform_operation(inst)
+                update_inst_stage(inst)                
 
-        # 4. Rename registers
-
-
-        # 5. Reservation stations are now physical registers
-
+            # TODO: ------ 4. Rename registers ( do this later) ------
 
 
-        pass
-        
+            # TODO: ------ 5. Reservation stations are now physical registers ------
+
     def print_stat(self):
         """
         Print the status of the internals
@@ -243,34 +337,49 @@ class OperatingSystem:
         # Register result status
 
 
-
         # Memory Status (of every cycle)
 
  
 
         print("-------------------")
 
+def parse_instructions(file_path):
+    instructions = []
 
+    with open(file_path, 'r') as file:
+        for line in file:
+            # Remove leading/trailing whitespaces and skip empty lines
+            line = line.strip()
+            if not line:
+                continue
+
+            # Split the instruction into operation and operands
+            parts = line.split()
+            operation = parts[0]  # First part is the operation
+            operands = parts[1].split(',')  # Split operands by ','
+
+            # Extract individual components
+            if len(operands) == 3:  # For instructions like ADD, SUB, MUL
+                op1, op2, op3 = operands
+                instructions.append((operation, op1.strip(), op2.strip(), op3.strip()))
+            elif len(operands) == 2:  # For instructions like ADDI
+                op1, op2 = operands
+                instructions.append((operation, op1.strip(), op2.strip()))
+    
+    return instructions
 
 def main():
 
-    instruction_buffer = []
-    with open('your_file.txt', 'r') as file:
-        for line in file:
-            words = line.split()  # Split the line by whitespace & save in list
-            instruction_buffer.append(Instruction(words))
+    # This is the test case we want to run
+    file_path = 'test_case_1.txt'
+    parsed_instructions = parse_instructions(file_path=file_path)
 
     # Initialization
     tm = OperatingSystem(
-        inst_buffer=instruction_buffer, 
+        inst_buffer=parsed_instructions, 
         rc=4,
         frc=4,
     )
-
-    # Testing each instruction
-
-
-    pass
 
 if __name__ == '__main__':
     main()

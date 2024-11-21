@@ -1,0 +1,13 @@
+# ignore vscode #
+.vscode
+
+# ignore .DS_Store
+.DS_Store
+
+# pytest cache #
+__pycache__
+.cache
+.pytest_cache
+
+# Virtual Environment #
+.venv
