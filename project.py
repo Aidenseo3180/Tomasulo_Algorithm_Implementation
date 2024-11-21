@@ -515,7 +515,7 @@ def parse_instructions(file_path):
 def choose_test_case(test_case_num):
 
     # --------- Test case file we would like to run ---------------
-    filepath = ""
+    file_path = ""
     
     # ---------- Set Initial Register Value -----------------
     given_register_value = {}
