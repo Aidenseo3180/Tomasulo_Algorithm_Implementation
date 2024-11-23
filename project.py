@@ -1,3 +1,4 @@
+import pprint
 
 class ProcessControlBlock:
     """
@@ -144,17 +145,38 @@ class OperatingSystem:
     Class dedicated to conduct Tomasulo's Algorithm.
     Assume there's only 1 adder, 1 floating-point adder
     """
-    def __init__(self, inst_buffer: list, given_register_val:dict, rc: int = 4, frc: int = 4, lrc: int = 4, strc: int = 4):
+    def __init__(self, config_data):
         """
         Args:
-            inst_buffer (list): list of instructions
-            given_register_val (dict): initial given register (register name: value pairs)
-            rc (int): adder reservation station capacity
-            frc (int): floating-point adder reservation capacity
-            lrc (int): load reservation station capacity
-            strc (int): store reservation station capacity
+            config_data: contains the configuration
         """
-        self._inst_buffer = inst_buffer     # store all the given instructions
+
+        self._config_data = config_data
+
+        # --------------- Read config data -----------------
+        # read in instructions
+        self._inst_buffer = self.parse_instructions(self._config_data['instructions'])
+        if len(self._inst_buffer) == 0:
+            print("----- No instruction given to run, terminated -----")
+            return
+
+        # Read initial register config
+        self._register = {
+            "R1": 0,
+            "R2": 0,
+            "R3": 0,
+            "R4": 0,
+            "R5": 0,
+            "R6": 0,
+            "R7": 0,
+            "R8": 0,
+            "R9": 0,
+            "R10": 0
+        }
+        for reg, val in self._config_data['registers'].items():
+            if reg in self._register:
+                self._register[reg] = val
+
 
         # TODO: do this later
         self._RAT = []      # RAT (source mapping)
@@ -162,26 +184,20 @@ class OperatingSystem:
 
         self._active_instructions = []  # Keeps the ACTIVE inst
 
-        # Register (w/ initial values)
-        self._register = given_register_val
-
         # Reservation stations
-        self._adder_reserv_st = ReservationStation(rc)
-        self._fp_adder_reserv_st = ReservationStation(frc)
-        self._load_reserv_st = ReservationStation(lrc)
-        self._store_reserv_st = ReservationStation(strc)
+        self._adder_reserv_st = ReservationStation(config_data["fu_details"]['integer_adder']['rs'])
+        self._fp_adder_reserv_st = ReservationStation(config_data["fu_details"]['fp_adder']['rs'])
+        self._fp_mult_reserv_st = ReservationStation(config_data["fu_details"]['fp_multiplier']['rs'])
+        self._load_store_reserv_st = ReservationStation(config_data["fu_details"]['load_store_unit']['rs'])
 
         self._cycle = 0          # keep a track of cycles
 
         # List that keeps a track of dependent register
         self._dependency_list = []
         self._is_dependent = False  # dependency flag
-
-        if len(self._inst_buffer) == 0:
-            print("----- No instruction given to run, terminated -----")
-            return
-
+        
         self.run_pipeline()
+
 
     def find_free_reservation(self, inst):
         """
@@ -198,13 +214,14 @@ class OperatingSystem:
             is_successful = self._fp_adder_reserv_st.store_inst(inst)
 
         if inst_type == "LDR":
-            is_successful = self._load_reserv_st.store_inst(inst)
+            is_successful = self._load_store_reserv_st.store_inst(inst)
 
         if inst_type == "STR":
-            is_successful = self._store_reserv_st.store_inst(inst)
+            is_successful = self._load_store_reserv_st.store_inst(inst)
 
         return is_successful
     
+
     def check_dependency(self, operand_2="", operand_3=""):
         # ----- If there's a dependency -> return True ------
         if operand_2 in self._dependency_list or operand_3 in self._dependency_list:
@@ -212,9 +229,11 @@ class OperatingSystem:
         
         return False    # no dependency
 
+
     def remove_from_dependency_list(self, register_name):
         if register_name in self._dependency_list:
             self._dependency_list.remove(register_name)
+
 
     def perform_operation(self, inst: ProcessControlBlock):
         # Depends on the opcode, run different stages
@@ -333,6 +352,7 @@ class OperatingSystem:
             case _:
                 print("--- WARNING: Opcode Not supported, thus ignored ---")
                 raise Exception("Given Opcode Not Supported")
+
 
     def run_pipeline(self):
         """
@@ -454,12 +474,12 @@ class OperatingSystem:
         print("\nFloating-Point Adder Reservation Station:")
         print("-----------------------------------------")
         self._fp_adder_reserv_st.print_reserv_station_content()
-        print("\n        Load Reservation Station: ")
+        print("\nFloating-Point Mult Reservation Station:")
         print("-----------------------------------------")
-        self._load_reserv_st.print_reserv_station_content()
-        print("\n        Store Reservation Station: ")
+        self._fp_mult_reserv_st.print_reserv_station_content()
+        print("\n    Load Store Reservation Station: ")
         print("-----------------------------------------")
-        self._store_reserv_st.print_reserv_station_content()
+        self._load_store_reserv_st.print_reserv_station_content()
 
         # Instruction Status (in pipeline form)
         print("\n*******************************")
@@ -487,17 +507,13 @@ class OperatingSystem:
  
         print("\n**********************************\n")
 
-def parse_instructions(file_path):
-    instructions = []
+    def parse_instructions(self, instructions_list):
+        instructions = []
 
-    with open(file_path, 'r') as file:
-        for line in file:
-            # Remove leading/trailing whitespaces and skip empty lines
-            line = line.strip()
-            if not line:
-                continue
+        for line in instructions_list:
+            if line == "":
+                continue 
 
-            # Split the instruction into operation and operands
             parts = line.split()
             operation = parts[0]  # First part is the operation
             operands = parts[1].split(',')  # Split operands by ','
@@ -509,8 +525,9 @@ def parse_instructions(file_path):
             elif len(operands) == 2:  # For instructions like LOAD, STORE
                 op1, op2 = operands
                 instructions.append((operation, op1.strip(), op2.strip()))
-    
-    return instructions
+        
+        return instructions
+
 
 def choose_test_case(test_case_num):
 
@@ -554,29 +571,98 @@ def choose_test_case(test_case_num):
 
     return file_path, given_register_value
 
+
+def parse_configuration(file_path):
+    """
+    Reads a configuration file in a fixed format and parses the data into variables.
+    
+    Args:
+        file_path (str): Path to the configuration file.
+    
+    Returns:
+        dict: A dictionary containing the parsed configuration details.
+    """
+    config = {}
+    
+    with open(file_path, 'r') as f:
+        lines = f.readlines()
+
+    # Parse the Functional Unit (FU) details
+    config["fu_details"] = {
+        "integer_adder": {
+            "rs": int(lines[1].split()[2].strip()), # reservation station
+            "cycles_in_ex": int(lines[1].split()[3].strip()),
+            "cycles_in_mem": None,
+            "f_units": int(lines[1].split()[4].strip())
+        },
+        "fp_adder": {
+            "rs": int(lines[2].split()[2].strip()),
+            "cycles_in_ex": int(lines[2].split()[3].strip()),
+            "cycles_in_mem": None,
+            "f_units": int(lines[2].split()[4].strip())
+        },
+        "fp_multiplier": {
+            "rs": int(lines[3].split()[2].strip()),
+            "cycles_in_ex": int(lines[3].split()[3].strip()),
+            "cycles_in_mem": None,
+            "f_units": int(lines[3].split()[4].strip())
+        },
+        "load_store_unit": {
+            "rs": int(lines[4].split()[2].strip()),
+            "cycles_in_ex": int(lines[4].split()[3].strip()),
+            "cycles_in_mem": int(lines[4].split()[4].strip()),
+            "f_units": int(lines[4].split()[5].strip())
+        }
+    }
+
+    # Parse ROB and CDB buffer entries
+    config["rob_entries"] = int(lines[6].split()[1].strip())
+    config["cdb_buffer_entries"] = int(lines[7].split()[1].strip())
+
+    # Parse register values
+    config["registers"] = {
+        "R2": int(lines[9].split()[1].strip()),
+        "R3": int(lines[10].split()[1].strip()),
+        "R5": int(lines[11].split()[1].strip()),
+        "R7": int(lines[12].split()[1].strip()),
+        "R9": int(lines[13].split()[1].strip())
+    }
+
+    # Parse instructions
+    config["instructions"] = []
+    for i in range(15, len(lines)):  # Starting from line 15 where instructions begin
+        config["instructions"].append(lines[i].strip())
+    
+    return config
+
+
 def main():
 
     # ********************************************
     # * Choose the testcase we would like to run *
     # ********************************************
-    file_path, given_register_value = choose_test_case(1)
 
-    # -------------- Actual Run ---------------
+    file_to_run = "test_case_1.txt"
+
 
     print("\n**********************************")
     print("*         Initial Setup          *")
     print("**********************************\n")
-    print(f"Chosen File Path: {file_path}")
-    print(f"Chosen Initial Register Values: {given_register_value}")
+    config_data = parse_configuration(file_to_run)
+    # Access parsed data
+    print("Functional Units: ")
+    pprint.pprint(config_data["fu_details"])
+    print("ROB Entries: ", end='')
+    pprint.pprint(config_data["rob_entries"])
+    print("CDB Buffer Entries: ", end='')
+    pprint.pprint(config_data["cdb_buffer_entries"])
+    print("Registers: ", config_data["registers"])
+    print("Instructions: ", config_data["instructions"])
 
+    # # -------------- Actual Run ---------------
 
-    parsed_instructions = parse_instructions(file_path=file_path)
-
-    tm = OperatingSystem(
-        inst_buffer=parsed_instructions, 
-        given_register_val=given_register_value,
-        rc=4,
-        frc=4,
+    OperatingSystem(
+        config_data=config_data
     )
 
 if __name__ == '__main__':
