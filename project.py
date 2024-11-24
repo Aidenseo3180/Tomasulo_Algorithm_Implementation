@@ -177,6 +177,8 @@ class OperatingSystem:
             if reg in self._register:
                 self._register[reg] = val
 
+        # TODO: Also make floating point registers (F1, F2, etc.). Above are R1, R2, etc.
+
 
         # TODO: do this later
         self._RAT = []      # RAT (source mapping)
@@ -528,50 +530,6 @@ class OperatingSystem:
         
         return instructions
 
-
-def choose_test_case(test_case_num):
-
-    # --------- Test case file we would like to run ---------------
-    file_path = ""
-    
-    # ---------- Set Initial Register Value -----------------
-    given_register_value = {}
-
-    match(test_case_num):
-        case 1:
-            file_path = 'test_case_1.txt'
-            given_register_value = {
-                "R1": 0,
-                "R2": 5,
-                "R3": 10,
-                "R4": 0,
-                "R5": 8,
-                "R6": 3,
-                "R7": 0,
-                "R8": 2,
-                "R9": 0,
-                "R10": 4
-            }
-        case 2:
-            file_path = 'test_case_2.txt'
-            given_register_value = {
-                "R1": 0,
-                "R2": 6,
-                "R3": 9,
-                "R4": 0,
-                "R5": 3,
-                "R6": 0,
-                "R7": 4,
-                "R8": 0,
-                "R9": 2,
-                "R10": 0
-            }
-        case _:
-            pass
-
-    return file_path, given_register_value
-
-
 def parse_configuration(file_path):
     """
     Reads a configuration file in a fixed format and parses the data into variables.
@@ -643,7 +601,6 @@ def main():
     # ********************************************
 
     file_to_run = "test_case_1.txt"
-
 
     print("\n**********************************")
     print("*         Initial Setup          *")
