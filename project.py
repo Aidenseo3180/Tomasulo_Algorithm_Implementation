@@ -1,4 +1,5 @@
 import pprint
+import re
 
 class ProcessControlBlock:
     """
@@ -9,7 +10,10 @@ class ProcessControlBlock:
         self._opcode = instruction[0]
         self._operand_1 = instruction[1]
         self._operand_2 = instruction[2]
-        self._operand_3 = instruction[3]
+        if len(instruction) == 4:
+            self._operand_3 = instruction[3]
+        else:
+            self._operand_3 = []
 
         self._current_stage = 'None'   # initial stage of instruction in pipeline
         self._is_stall = False         # indicator flag to indicate whether the instruction is in stall
@@ -33,6 +37,20 @@ class ProcessControlBlock:
 
         self._reserv_idx = None
 
+        self._SD_helper = 0     # For SD inst, saves the corresponding ROB entry index
+
+        # Flag to determine whether it uses F registers
+        self._is_fp = False
+
+        # Determine if it's FP during initialization
+        if "F" in self._operand_1 or "F" in self._operand_2 or "F" in self._operand_3:
+            self._is_fp = True
+
+    def set_SD_helper(self, idx):
+        self._SD_helper = idx
+
+    def get_SD_helpr(self):
+        return self._SD_helper
 
     def set_reserv_idx(self, idx):
         self._reserv_idx = idx
@@ -88,6 +106,9 @@ class ProcessControlBlock:
 
     def get_stage_cycle_counter(self):
         return self._stage_cycle_counter
+    
+    def get_is_fp(self):
+        return self._is_fp
 
 class ReservationStation:
     """
@@ -135,9 +156,41 @@ class Memory:
     """
     def __init__(self):
 
-        self._addresses = []
-        self._values = []
-        pass
+        # 256B (64W)
+        self._values = [0] * 64 # 256 / 4 = 64 Word. Ex. _values[0] will correspond to value of memory address 0-4.
+
+    def load_value(self, addr):
+        return self._values[addr]
+
+    def store_value(self, addr, value):
+        self._values[addr] = value
+    
+class ReorderBuffer:
+    """
+    Class for ROB
+    """
+    def __init__(self):
+        self._inst = ""
+        self._finish_bit = False
+        self._val = None
+
+    def set_entry(self, inst):
+        self._inst = inst
+
+    def set_finish_bit(self):
+        self._finish_bit = True
+
+    def get_entry(self):
+        return self._inst
+
+    def get_finish_bit(self):
+        return self._finish_bit
+    
+    def set_rob_entry_val(self, val):
+        self._val = val
+
+    def get_rob_entry_val(self, val):
+        return self._val
 
 # OS
 class OperatingSystem:
@@ -160,29 +213,55 @@ class OperatingSystem:
             print("----- No instruction given to run, terminated -----")
             return
 
-        # Read initial register config
-        self._register = {
-            "R1": 0,
-            "R2": 0,
-            "R3": 0,
-            "R4": 0,
-            "R5": 0,
-            "R6": 0,
-            "R7": 0,
-            "R8": 0,
-            "R9": 0,
-            "R10": 0
-        }
+        # *****************************
+        # *  Architectural Registers  *
+        # ******************************
+        # 32 Integer Registers
+        self._register = {}
+        for i in range(0, 32):
+            self._register[f"R{i}"] = 0
+
+        # 32 FP Registers
+        self._fp_register = {}
+        for i in range(0, 32):
+            self._fp_register[f"F{i}"] = 0
+        
         for reg, val in self._config_data['registers'].items():
+             # Read initial integer register config
             if reg in self._register:
                 self._register[reg] = val
+            
+            # Read initial fp register config
+            if reg in self._fp_register:
+                self._fp_register[reg] = val
 
-        # TODO: Also make floating point registers (F1, F2, etc.). Above are R1, R2, etc.
 
+        # ****************
+        # *    Memory    *
+        # ****************
+        self.memory = Memory()
+        for mem_idx, val in self._config_data['memory'].items():
+            self.memory.store_value(int(mem_idx) // 4, val)
 
-        # TODO: do this later
-        self._RAT = []      # RAT (source mapping)
-        self._ARF = []      # Architecture Reg File
+        # ************************
+        # *  ROB instiantiation  *
+        # ************************
+        self._ROB_entries = []
+        rob_size = self._config_data["rob_entries"]
+        for i in range(rob_size):
+            self._ROB_entries.append(ReorderBuffer())
+        self._ROB_entries_avail_idx = 0
+        self._ROB_head_pointer = 0  # This is what we use to traverse ROB as its finished bit becomes True
+
+        #TODO: do this later
+        # Use RAT to map each instruction with each entry of ROB
+        self._RAT = {}                  # RAT (source mapping) {"R1": ["# index of ROB entry", "# index of ROB entry", etc.]}
+        for i in range(0, 16):
+            self._RAT[f"R{i}"] = []
+        for i in range(0, 16):
+            self._RAT[f"F{i}"] = []
+        
+        self._CDB_buffer_entries = self._config_data["cdb_buffer_entries"]
 
         self._active_instructions = []  # Keeps the ACTIVE inst
 
@@ -196,7 +275,17 @@ class OperatingSystem:
 
         # List that keeps a track of dependent register
         self._dependency_list = []
-        self._is_dependent = False  # dependency flag
+
+        # Load Store Queue to keep load/store inst in order (use list like a queue)
+        # Reservation station for memory unit
+        # NOTE: load & Store has dedicated adder for effective address calculation
+        # Each entry of queue contains 2 fields: address & value (address to find location, value for store - not useful for loads)
+        # "Store" writes into memory only in commmit stage (dequeued only when they commit)
+        self.load_store_queue = []
+
+        # Flag that I use to determine whether the commit has occurred
+        # If True, do not run commit other instructions that are about to commit (bc commit should take 1 cycle each)
+        self._is_commited = False
         
         self.run_pipeline()
 
@@ -209,16 +298,16 @@ class OperatingSystem:
         inst_type = inst.get_opcode()
         is_successful = False
         
-        if inst_type == "ADD" or inst_type == "ADDI" or inst_type == "SUB":     # For adder reservation station
+        if inst_type == "ADD" or inst_type == "ADDI" or inst_type == "SUB" or inst_type == "SUBI":     # For adder reservation station
             is_successful = self._adder_reserv_st.store_inst(inst)
         
         if inst_type == "MUL" or inst_type == "DIVD":                          # For floating-point reservation station
             is_successful = self._fp_adder_reserv_st.store_inst(inst)
 
-        if inst_type == "LDR":
+        if inst_type == "LD":
             is_successful = self._load_store_reserv_st.store_inst(inst)
 
-        if inst_type == "STR":
+        if inst_type == "SD":
             is_successful = self._load_store_reserv_st.store_inst(inst)
 
         return is_successful
@@ -254,21 +343,33 @@ class OperatingSystem:
 
         # NOTE: Find the idx of instruction's reservation station
         inst_reserv_idx = inst.get_reserv_idx()
+        is_fp = inst.get_is_fp()
+        
         match(op):
+            # ***************
+            # *    Adder    *
+            # ***************
             case 'ADD':
                 if current_stage == "EX":
                     if is_executed == False:
                         # ---- First save the executed result to reservation station -> during WB, write to register -----
-                        res = self._register[operand_2] + self._register[operand_3]
-                        self._adder_reserv_st.store_result(inst_reserv_idx, res)
+                        if is_fp == True:
+                            res = self._fp_register[operand_2] + self._fp_register[operand_3]
+                            self._fp_adder_reserv_st.store_result(inst_reserv_idx, res)
+                        else:
+                            res = self._register[operand_2] + self._register[operand_3]
+                            self._adder_reserv_st.store_result(inst_reserv_idx, res)
                         inst.set_is_executed()          # set the executed flag to True
                         inst.set_move_to_next_stage()  # takes 1 cycle in EX
                 elif current_stage == "WB":
                     inst.set_move_to_next_stage()      # takes 1 cycle in WB
-                    self._register[operand_1] = self._adder_reserv_st.get_reserv_content(inst_reserv_idx)   # write the result to register now
-
-                    # Clear the reservation station entry
-                    self._adder_reserv_st.clear_reserv_content(inst_reserv_idx)
+                    if is_fp == True:
+                        self._fp_register[operand_1] = self._adder_reserv_st.get_reserv_content(inst_reserv_idx)   # write the result to register now
+                        self._fp_adder_reserv_st.clear_reserv_content(inst_reserv_idx)
+                    else:
+                        self._register[operand_1] = self._adder_reserv_st.get_reserv_content(inst_reserv_idx)   # write the result to register now
+                        # Clear the reservation station entry
+                        self._adder_reserv_st.clear_reserv_content(inst_reserv_idx)
                     # remove register from dependency list -> allow other instructions w/ dependencies to run
                     self.remove_from_dependency_list(operand_1)
                 else:
@@ -276,43 +377,82 @@ class OperatingSystem:
             case 'ADDI':
                 if current_stage == "EX":
                     if is_executed == False:
-                        res = self._register[operand_2] + int(operand_3)
-                        self._adder_reserv_st.store_result(inst_reserv_idx, res)
+                        if is_fp == True:
+                            res = self._fp_register[operand_2] + int(operand_3)
+                            self._fp_adder_reserv_st.store_result(inst_reserv_idx, res)
+                        else:
+                            res = self._register[operand_2] + int(operand_3)
+                            self._adder_reserv_st.store_result(inst_reserv_idx, res)
                         inst.set_is_executed()
                         inst.set_move_to_next_stage()  # takes 1 cycle in EX
                 elif current_stage == "WB":
                     inst.set_move_to_next_stage()      # takes 1 cycle in WB
-                    self._register[operand_1] = self._adder_reserv_st.get_reserv_content(inst_reserv_idx) # write the result to register now
-
-                    self._adder_reserv_st.clear_reserv_content(inst_reserv_idx)
+                    if is_fp == True:
+                        self._fp_register[operand_1] = self._adder_reserv_st.get_reserv_content(inst_reserv_idx) # write the result to register now
+                        self._fp_adder_reserv_st.clear_reserv_content(inst_reserv_idx)
+                    else:
+                        self._register[operand_1] = self._adder_reserv_st.get_reserv_content(inst_reserv_idx) # write the result to register now
+                        self._adder_reserv_st.clear_reserv_content(inst_reserv_idx)
                     self.remove_from_dependency_list(operand_1)
                 else:
                     inst.set_move_to_next_stage()      # takes 1 cycle in COMMIT
             case 'SUB':
                 if current_stage == "EX":
                     if is_executed == False:
-                        res = self._register[operand_2] - self._register[operand_3]
-                        self._adder_reserv_st.store_result(inst_reserv_idx, res)
+                        if is_fp == True:
+                            res = self._fp_register[operand_2] - self._fp_register[operand_3]
+                            self._fp_adder_reserv_st.store_result(inst_reserv_idx, res)
+                        else:
+                            res = self._register[operand_2] - self._register[operand_3]
+                            self._adder_reserv_st.store_result(inst_reserv_idx, res)
                         inst.set_is_executed()
                         inst.set_move_to_next_stage()  # takes 1 cycle in EX
                 elif current_stage == "WB":
                     inst.set_move_to_next_stage()      # takes 1 cycle in WB
-                    self._register[operand_1] = self._adder_reserv_st.get_reserv_content(inst_reserv_idx) # write the result to register now
-
-                    self._adder_reserv_st.clear_reserv_content(inst_reserv_idx)
+                    if is_fp == True:
+                        self._fp_register[operand_1] = self._adder_reserv_st.get_reserv_content(inst_reserv_idx) # write the result to register now
+                        self._fp_adder_reserv_st.clear_reserv_content(inst_reserv_idx)
+                    else:
+                        self._register[operand_1] = self._adder_reserv_st.get_reserv_content(inst_reserv_idx) # write the result to register now
+                        self._adder_reserv_st.clear_reserv_content(inst_reserv_idx)
                     self.remove_from_dependency_list(operand_1)
                 else:
                     inst.set_move_to_next_stage()      # takes 1 cycle in COMMIT
-
+            case 'SUBI':
+                if current_stage == "EX":
+                    if is_executed == False:
+                        if is_fp == True:
+                            res = self._fp_register[operand_2] - int(operand_3)
+                            self._fp_adder_reserv_st.store_result(inst_reserv_idx, res)
+                        else:
+                            res = self._register[operand_2] - int(operand_3)
+                            self._adder_reserv_st.store_result(inst_reserv_idx, res)
+                        inst.set_is_executed()
+                        inst.set_move_to_next_stage()  # takes 1 cycle in EX
+                elif current_stage == "WB":
+                    inst.set_move_to_next_stage()      # takes 1 cycle in WB
+                    if is_fp == True:
+                        self._fp_register[operand_1] = self._adder_reserv_st.get_reserv_content(inst_reserv_idx) # write the result to register now
+                        self._fp_adder_reserv_st.clear_reserv_content(inst_reserv_idx)
+                    else:
+                        self._register[operand_1] = self._adder_reserv_st.get_reserv_content(inst_reserv_idx) # write the result to register now
+                        self._adder_reserv_st.clear_reserv_content(inst_reserv_idx)
+                    self.remove_from_dependency_list(operand_1)
+                else:
+                    inst.set_move_to_next_stage()      # takes 1 cycle in COMMIT
+            # ***********************
+            # *    FP Multiplier    *
+            # ***********************
             case 'MUL':
                 if current_stage == "EX":
                     if is_executed == False:
+                        # TODO: MULT & DIV must be done in Floating-point!
                         res = self._register[operand_2] * self._register[operand_3]
                         self._fp_adder_reserv_st.store_result(inst_reserv_idx, res)
                         inst.set_is_executed()
                         inst.increment_cycle_counter() # +1 to its own counter (spent 1 cycle)
                     else:
-                        if inst.get_cycle_counter() < 2:
+                        if inst.get_cycle_counter() < self._config_data["fu_details"]["fp_multiplier"]["cycles_in_ex"]-1:    # FP multiplier EX count
                             inst.increment_cycle_counter()
                         else:
                             inst.set_move_to_next_stage()  # takes 2 cycles in EX
@@ -324,7 +464,6 @@ class OperatingSystem:
                     self.remove_from_dependency_list(operand_1)
                 else:
                     inst.set_move_to_next_stage()      # takes 1 cycle in COMMIT
-
             case 'DIVD':
                 if current_stage == "EX":
                     if is_executed == False:
@@ -332,7 +471,7 @@ class OperatingSystem:
                         self._fp_adder_reserv_st.store_result(inst_reserv_idx, res)
                         inst.set_is_executed()
                     else:
-                        if inst.get_cycle_counter() < 2:
+                        if inst.get_cycle_counter() < self._config_data["fu_details"]["fp_multiplier"]["cycles_in_ex"]-1:
                             inst.increment_cycle_counter()
                         else:
                             inst.set_move_to_next_stage()  # takes 2 cycles in EX
@@ -344,16 +483,93 @@ class OperatingSystem:
                     self.remove_from_dependency_list(operand_1)
                 else:
                     inst.set_move_to_next_stage()      # takes 1 cycle in COMMIT
+            # ***********************
+            # *   Load Store Unit   *
+            # ***********************
+            case 'LD':
+                # If there's a (), then check the address instead
+                if current_stage == "EX":
+                    if is_executed == False:
+                        if "(" in operand_2:
+                            # NOTE: use register as base address, add offset on top of it to find data
+                            # 4 offset (in byte) = 1 (in word)
+                            offset, reg = self.split_number_and_parentheses(operand_2)
+                            if reg[0] == "R":
+                                base_addr = self._register[reg]
+                            elif reg[0] == "F":
+                                base_addr = self._fp_register[reg]
 
-            case 'LDR':
-                # TODO: implement LDR (LOAD)
-                pass
-            case 'STR':
-                # TODO: implement STR (STORE)
-                pass
+                            self.load_store_queue.append(inst)  # add to load/store queue
+
+                            # LOAD goes into memory whenever the address is calculated:
+                            calculated_addr = (base_addr + offset) / 4
+                            # grab the data from the memory
+                            value = self.memory.load_value(int(calculated_addr))  # convert to word
+                            self._load_store_reserv_st.store_result(inst_reserv_idx, value) # save in reservation station first
+                            
+                            inst.set_is_executed()
+                            inst.set_move_to_next_stage()
+                elif current_stage == "MEM":        
+                    if inst.get_cycle_counter() < self._config_data["fu_details"]["load_store_unit"]["cycles_in_mem"]-1:    # FP multiplier EX count
+                        inst.increment_cycle_counter()
+                    else:
+                        val = self._load_store_reserv_st.get_reserv_content(inst_reserv_idx)
+                        self._register[operand_1] = val # TODO: find whether it's reg or FP reg. Also, save to reservation station first
+                        self.load_store_queue.pop(0)
+                        inst.set_move_to_next_stage()  # takes 2 cycles in EX
+
+                        # remove from dependency list
+                        self.remove_from_dependency_list(operand_1)
+                        self._load_store_reserv_st.clear_reserv_content(inst_reserv_idx)
+                else:
+                    inst.set_move_to_next_stage()
+
+            case 'SD':
+                if current_stage == "EX":
+                    if "(" in operand_2:
+                        self.load_store_queue.append(inst)  # add to load/store queue
+                        # self._load_store_reserv_st.store_result(inst_reserv_idx, )
+                        inst.set_move_to_next_stage()
+                elif current_stage == "COMMIT":
+                    # check if top-most inst in queue is current inst SD -> if it is, perform operation
+                    if inst == self.load_store_queue[0]:
+                        offset, reg = self.split_number_and_parentheses(operand_2)
+                        if reg[0] == "R":
+                            base_addr = self._register[reg]
+                        elif reg[0] == "F":
+                            base_addr = self._fp_register[reg]
+                        # convert to word & find address, then store the content of register
+                        calculated_addr = (base_addr + offset) / 4
+                        self.memory.store_value(int(calculated_addr), self._register[operand_1])
+
+                        self.load_store_queue.pop(0)    # remove from queue
+                        inst.set_move_to_next_stage()
+                        self.remove_from_dependency_list(operand_2) # remove offset(addr) from dependency list
+                else:
+                    inst.set_move_to_next_stage()
+            
             case _:
                 print("--- WARNING: Opcode Not supported, thus ignored ---")
                 raise Exception("Given Opcode Not Supported")
+
+
+    def split_number_and_parentheses(self, input_string):
+        """
+        Splits a string into a number and the content within parentheses.
+
+        Args:
+            input_string (str): The input string in the format 'number(content)'.
+
+        Returns:
+            tuple: A tuple containing the number (as an integer) and the string inside parentheses.
+        """
+        match = re.match(r"(\d+)\((.+?)\)", input_string)
+        if match:
+            number = int(match.group(1))
+            content = match.group(2)
+            return number, content
+        else:
+            raise ValueError("Input string is not in the expected format 'number(content)'")
 
 
     def run_pipeline(self):
@@ -370,7 +586,15 @@ class OperatingSystem:
                 return
             
             # --------- Check for dependency before entering EX stage --------------
-            is_dependent = self.check_dependency(inst.get_operand_2(), inst.get_operand_2())
+            # NOTE: STORE dependency works differently than other instructions
+            is_dependent = False
+            if inst.get_opcode() == "LD":
+                is_dependent = self.check_dependency(inst.get_operand_2())
+            elif inst.get_opcode() == "SD":
+                pass
+            else:
+                is_dependent = self.check_dependency(inst.get_operand_2(), inst.get_operand_3())
+            
             if is_dependent == True:
                 return
 
@@ -378,25 +602,53 @@ class OperatingSystem:
             opcode = inst.get_opcode()
 
             # keep a track of how many cycles spent in each stage before move to the next stage
-            cycle_spent = inst.get_cycle_counter()
-            inst.update_stage_cycle_counter(curr_stage, self._cycle - cycle_spent, self._cycle)
+            if curr_stage != "ISSUE":
+                cycle_spent = inst.get_cycle_counter()
+                inst.update_stage_cycle_counter(curr_stage, self._cycle - cycle_spent, self._cycle)
 
             # ----- Check current stage, update the corresponding stage accordingly -----
             match(curr_stage):
                 case "ISSUE":
                     inst.update_stage("EX")
+
                 case "EX":
-                    # Only LOAD and STORE use MEM
-                    if opcode == "LDR" or opcode == "STR":
+                    # Only LOAD use MEM
+                    if opcode == "LD":
                         inst.update_stage("MEM")
+                    elif opcode == "SD":
+                        inst.update_stage("COMMIT") # if SD, jump to COMMIT
                     else:
                         inst.update_stage("WB")
+
                 case "MEM":
                     inst.update_stage("WB")
+
                 case "WB":
                     inst.update_stage("COMMIT")
+
+                    # When COMMIT is reached, update the flag in ROB entries
+                    if opcode == "SD":
+                        ROB_idx = self._RAT[inst.get_SD_helpr()][0]
+                    else:
+                        ROB_idx = self._RAT[inst.get_operand_1()][0]
+                    if inst == self._ROB_entries[ROB_idx].get_entry():
+                        self._ROB_entries[ROB_idx].set_finish_bit()
+
                 case "COMMIT":
-                    inst.update_stage("DONE")   # NOTE: When instruction reaches 'DONE', that's when it leaves the active instruction list
+                    if opcode == "SD":
+                        ROB_idx = self._RAT[inst.get_SD_helpr()][0]
+                    else:
+                        ROB_idx = self._RAT[inst.get_operand_1()][0]
+                    if self._ROB_head_pointer == ROB_idx and self._is_commited == False:
+                        self._ROB_head_pointer += 1
+                        inst.update_stage_cycle_counter(curr_stage, self._cycle, self._cycle)
+                        inst.update_stage("DONE")   # NOTE: When instruction reaches 'DONE', that's when it leaves the active instruction list
+                        self._is_commited = True
+                        if opcode == "SD":
+                            del self._RAT[inst.get_SD_helpr()][0]
+                        else:
+                            del self._RAT[inst.get_operand_1()][0]
+                    # Otherwise, stay in COMMIT stage
 
             # reset the flag and counter (bc we just used the counter to track # of cycles spent in each stage)
             inst.reset_move_to_next_stage()
@@ -406,7 +658,7 @@ class OperatingSystem:
         # Repeatedly run until the instruction buffer is empty
         running_inst = 0
         while(len(self._inst_buffer) != 0 or running_inst > 0):
-
+            
             self._cycle += 1
 
             # print(f"current cycle: {self._cycle}")
@@ -423,14 +675,27 @@ class OperatingSystem:
                 # if there's a space in reservation -> remove inst from buffer & add to queue
                 # otherwise, stall (keep it in _inst_buffer)
                 if is_successful is True:
+                    
+                    # Save instruction to available ROB entry
+                    self._ROB_entries[self._ROB_entries_avail_idx].set_entry(inst)
+                    if inst.get_opcode() == "SD":   # For SD(Store), RAT doesn't save anything
+                        inst.set_SD_helper(self._ROB_entries_avail_idx)
+                    else:
+                        self._RAT[inst.get_operand_1()].append(self._ROB_entries_avail_idx)
+                    self._ROB_entries_avail_idx += 1
+
+                    # Add ISSUE record to inst to keep a track of things
                     inst.update_stage_cycle_counter("ISSUE", self._cycle, self._cycle)
                     self._active_instructions.append(inst)  # Add to the active instruction queue (with instruction tracker)
-                    del self._inst_buffer[0]
+                    del self._inst_buffer[0]    # remove instruction from inst buffer (since it's active now)
                     running_inst += 1
 
                     # Add to Dependency List
-                    if inst.get_operand_1() not in self._dependency_list:
-                        self._dependency_list.append(inst.get_operand_1())
+                    if inst.get_opcode() == "SD":
+                        self._dependency_list.append(inst.get_operand_2()) # use offset(addr) as dependency check instead
+                    else:
+                        if inst.get_operand_1() not in self._dependency_list:
+                            self._dependency_list.append(inst.get_operand_1())
 
             # ----- iterate through the ACTIVE instructions to progress -----
             for inst in self._active_instructions:
@@ -445,11 +710,9 @@ class OperatingSystem:
                     # Set stage to TERMINATED b/c if stay in DONE, this else statement gets called for instructions in DONE stage iteratively
                     inst.update_stage("Terminated")
 
+            self._is_commited = False
 
             # TODO: ------ 4. Rename registers ( do this later) ------
-
-
-            # TODO: ------ 5. Reservation stations are now physical registers ------
 
         self.print_stat()
                 
@@ -489,7 +752,10 @@ class OperatingSystem:
         print("*******************************\n")
 
         for inst in self._active_instructions:
-            print(f"{inst.get_opcode()} {inst.get_operand_1()} {inst.get_operand_2()} {inst.get_operand_3()} | ", end='')
+            if inst.get_opcode() == "LD" or inst.get_opcode() == "SD":
+                print(f"{inst.get_opcode()} {inst.get_operand_1()} {inst.get_operand_2()} | ", end='')
+            else:
+                print(f"{inst.get_opcode()} {inst.get_operand_1()} {inst.get_operand_2()} {inst.get_operand_3()} | ", end='')
             for key, value in inst.get_stage_cycle_counter().items():
                 if key != "Terminated":
                     print(f"{key}:{value} ", end='')
@@ -499,11 +765,35 @@ class OperatingSystem:
         print("\n***************************")
         print("* Register Content Status *")
         print("***************************\n")
+        print("Integer Register")
+        counter = 0
         for key, value in self._register.items():
-            print(f"{key}: {value}")
+            if counter < 10:
+                counter += 1
+                print(f"{key}:  {value}")
+            else:
+                print(f"{key}: {value}")
 
         # TODO: Memory Status (of every cycle)
         # Print memory addresses
+
+        print("\nFloating-Point Register")
+        counter = 0
+        for key, value in self._fp_register.items():
+            if counter < 10:
+                counter += 1
+                print(f"{key}:  {value}")
+            else: 
+                print(f"{key}: {value}")
+
+        # Memory
+        print("\n*************************")
+        print("* Memory Content Status *")
+        print("*************************\n")
+        for i in range(0, 64):
+            memory_val = self.memory.load_value(i)
+            print(f"Memory[{i*4}]: {memory_val}")
+
 
         print(f"\n\nTotal number of cycles: {self._cycle}\n")
  
@@ -541,58 +831,76 @@ def parse_configuration(file_path):
         dict: A dictionary containing the parsed configuration details.
     """
     config = {}
-    
     with open(file_path, 'r') as f:
         lines = f.readlines()
 
     # Parse the Functional Unit (FU) details
     config["fu_details"] = {
         "integer_adder": {
-            "rs": int(lines[1].split()[2].strip()), # reservation station
+            "rs": int(lines[1].split()[2].strip()),
             "cycles_in_ex": int(lines[1].split()[3].strip()),
             "cycles_in_mem": None,
-            "f_units": int(lines[1].split()[4].strip())
+            "f_units": int(lines[1].split()[4].strip()),
         },
         "fp_adder": {
             "rs": int(lines[2].split()[2].strip()),
             "cycles_in_ex": int(lines[2].split()[3].strip()),
             "cycles_in_mem": None,
-            "f_units": int(lines[2].split()[4].strip())
+            "f_units": int(lines[2].split()[4].strip()),
         },
         "fp_multiplier": {
             "rs": int(lines[3].split()[2].strip()),
             "cycles_in_ex": int(lines[3].split()[3].strip()),
             "cycles_in_mem": None,
-            "f_units": int(lines[3].split()[4].strip())
+            "f_units": int(lines[3].split()[4].strip()),
         },
         "load_store_unit": {
             "rs": int(lines[4].split()[2].strip()),
             "cycles_in_ex": int(lines[4].split()[3].strip()),
             "cycles_in_mem": int(lines[4].split()[4].strip()),
-            "f_units": int(lines[4].split()[5].strip())
-        }
+            "f_units": int(lines[4].split()[5].strip()),
+        },
     }
 
     # Parse ROB and CDB buffer entries
     config["rob_entries"] = int(lines[6].split()[1].strip())
     config["cdb_buffer_entries"] = int(lines[7].split()[1].strip())
 
-    # Parse register values
-    config["registers"] = {
-        "R2": int(lines[9].split()[1].strip()),
-        "R3": int(lines[10].split()[1].strip()),
-        "R5": int(lines[11].split()[1].strip()),
-        "R7": int(lines[12].split()[1].strip()),
-        "R9": int(lines[13].split()[1].strip())
-    }
+    # Memory
+    config["memory"] = {}
+    # Dynamically parse register values
+    config["registers"] = {}
+    register_section_started = False
+    instruction_section_started = False
+    for line in lines[8:]:
+        stripped_line = line.strip()
 
-    # Parse instructions
-    config["instructions"] = []
-    for i in range(15, len(lines)):  # Starting from line 15 where instructions begin
-        config["instructions"].append(lines[i].strip())
-    
+        if not stripped_line:  # Skip empty lines
+            continue
+
+        # Detect when instruction section starts
+        if any(op in stripped_line for op in ["ADD", "SUB", "MUL", "ADDI", "SD", "LD"]):
+            instruction_section_started = True
+
+        if instruction_section_started:
+            # Parse instructions
+            config.setdefault("instructions", []).append(stripped_line)
+        else:
+            # Parse registers
+            register_section_started = True
+            if stripped_line.startswith("R") and len(stripped_line.split()) == 2:
+                register, value = stripped_line.split()
+                config["registers"][register] = int(value)
+
+            if stripped_line.startswith("F") and len(stripped_line.split()) == 2:
+                register, value = stripped_line.split()
+                config["registers"][register] = int(value)
+
+            if stripped_line.startswith("MEM") and len(stripped_line.split()) == 2:
+                memory, value = stripped_line.split()
+                config["memory"][memory[4:-1]] = int(value)
+
     return config
-
 
 def main():
 
@@ -600,11 +908,14 @@ def main():
     # * Choose the testcase we would like to run *
     # ********************************************
 
-    file_to_run = "test_case_1.txt"
+    file_to_run = "test_case_4.txt"
 
     print("\n**********************************")
     print("*         Initial Setup          *")
     print("**********************************\n")
+
+    print(f"\nRunning test case: {file_to_run}\n")
+
     config_data = parse_configuration(file_to_run)
     # Access parsed data
     print("Functional Units: ")
@@ -614,6 +925,7 @@ def main():
     print("CDB Buffer Entries: ", end='')
     pprint.pprint(config_data["cdb_buffer_entries"])
     print("Registers: ", config_data["registers"])
+    print("Memory: ", config_data["memory"])
     print("Instructions: ", config_data["instructions"])
 
     # # -------------- Actual Run ---------------

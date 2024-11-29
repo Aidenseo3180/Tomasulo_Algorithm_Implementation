@@ -1,5 +1,18 @@
-LD R1, 0(R0)
-ADD R3, R1, R1
-LD R2, 0(R0)
-SUB R1, R3, R2
+                # of rs     Cycles in EX    Cycles in MEM   # of FUs
+Integer adder      3               1                            1
+FP adder           3               3                            1
+FP multiplier      2               20                           1
+LoadStore Unit     3               1               4            1
+
+ROB_entries 128
+CDB_buffer_entries 1
+
+R0 4
+
+MEM[8] 4
+
+LD R1,4(R0)
+ADD R3,R1,R1
+LD R2,4(R0)
+SUB R1,R3,R2
 
