@@ -6,6 +6,7 @@ LoadStore Unit     3               1               4            1
 
 ROB_entries 128
 CDB_buffer_entries 1
+misprediction_penalty 3
 
 R0 4
 

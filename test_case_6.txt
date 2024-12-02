@@ -8,15 +8,18 @@ ROB_entries 128
 CDB_buffer_entries 1
 misprediction_penalty 3
 
-R1 6
-R2 9
-R9 15
+R1 5
+R2 2
+R3 9
+R4 10
+R5 8
+R7 4
+R8 1
+R9 2
+R10 5
 
-F1 10
-F2 5
-F6 5
-
-ADD R3,R1,R2
-MUL F3,F1,F2
-SUB F7,F3,F6
-ADDI R8,R9,5
+SUB R3,R1,R2
+BEQ R3,R2,Label
+ADD R4,R4,R5
+Label:
+SUB R8,R9,R10

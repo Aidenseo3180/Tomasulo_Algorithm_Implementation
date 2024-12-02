@@ -6,14 +6,13 @@ LoadStore Unit     3               1               4            1
 
 ROB_entries 128
 CDB_buffer_entries 1
+misprediction_penalty 3
 
-R2 6
-R3 9
+R1 30
+R2 124
 R5 3
-R7 4
-R9 2
 
 SD R1,4(R2)
 LD R3,4(R2)
-ADD R4,R3,R5
+ADD R4,R3,R1
 SUBI R6,R4,2
