@@ -19,7 +19,7 @@ R9 2
 R10 5
 
 SUB R3,R1,R2
-BEQ R3,R2,Label
+BEQ R1,R2,Label
 ADD R4,R4,R5
 Label:
 SUB R8,R9,R10
