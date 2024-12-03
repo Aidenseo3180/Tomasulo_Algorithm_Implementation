@@ -900,6 +900,9 @@ class OperatingSystem:
                     # Set stage to TERMINATED
                     inst.update_stage("Terminated")
 
+            # Print the pipeline            
+            self.print_pipeline()
+
             # Reservation Stations
             print("Reservation Stations: ")
             print("Integer Adder: ", end='')
@@ -910,9 +913,6 @@ class OperatingSystem:
             self._fp_mult_reserv_st.print_reserv_station_content()
             print("Load Store: ", end='')
             self._load_store_reserv_st.print_reserv_station_content()
-
-            # Print the pipeline            
-            self.print_pipeline()
 
         # Print Final Stat
         self.print_final_stat()
@@ -939,11 +939,11 @@ class OperatingSystem:
         Print the status of the internals
         """
 
-        print("\n**********************************")
-        print("*                                *")
-        print("* Overview of Internal Structure *")
-        print("*                                *")
-        print("**********************************\n")
+        print("\n***********************************")
+        print("*                                 *")
+        print("*  Internal Structure At the End  *")
+        print("*                                 *")
+        print("***********************************\n")
 
         # Reservation Status
         print("********************************")
@@ -982,32 +982,41 @@ class OperatingSystem:
         print("\n***************************")
         print("* Register Content Status *")
         print("***************************\n")
-        print("Integer Register")
+        print("Integer Register\n")
         counter = 0
-        for key, value in self._register.items():
+        for key, value in self._register.items():                
             if counter < 10:
                 counter += 1
-                print(f"{key}: {value}  ", end='')
+                print(f"{key}:{value}  ", end='')
             else:
-                print(f"{key}: {value}  ", end='')
+                if key == "R15":
+                    print(f"{key}:{value}  ")
+                else:
+                    print(f"{key}:{value}  ", end='')
 
 
-        print("\nFloating-Point Register")
+        print("\n\nFloating-Point Register\n")
         counter = 0
         for key, value in self._fp_register.items():
             if counter < 10:
                 counter += 1
-                print(f"{key}: {value}  ", end='')
+                print(f"{key}:{value}  ", end='')
             else: 
-                print(f"{key}: {value}  ", end='')
+                if key == "F15":
+                    print(f"{key}:{value}  ")
+                else:
+                    print(f"{key}:{value}  ", end='')
 
         # Memory
-        print("\n*************************")
+        print("\n\n*************************")
         print("* Memory Content Status *")
         print("*************************\n")
         for i in range(0, 64):
             memory_val = self.memory.load_value(i)
-            print(f"Memory[{i*4}]: {memory_val}  ", end='')
+            if i % 7 == 0 and i != 0:
+                print(f"Memory[{i*4}]:{memory_val}  ")
+            else:
+                print(f"Memory[{i*4}]:{memory_val}  ", end='')
 
 
         print(f"\n\nTotal number of cycles: {self._cycle}\n")
@@ -1128,7 +1137,7 @@ def main():
     # * Choose the testcase we would like to run *
     # ********************************************
 
-    file_to_run = "test_case_5.txt"
+    file_to_run = "test_case_6.txt"
 
     print("\n**********************************")
     print("*         Initial Setup          *")
