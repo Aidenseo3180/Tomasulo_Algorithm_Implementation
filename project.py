@@ -1239,7 +1239,7 @@ def main():
     # * Choose the testcase we would like to run *
     # ********************************************
 
-    file_to_run = "temp_test_case_2.txt"
+    file_to_run = "test_case_1.txt"
 
     print("\n**********************************")
     print("*         Initial Setup          *")
