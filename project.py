@@ -127,6 +127,7 @@ class ReservationStation:
         # First, find the empty entry
         for idx, entry in enumerate(self._reserv_station):
             if entry is None:
+                self.store_result(idx, "Reserved")
                 inst.set_reserv_idx(idx)
                 return True # successful store
 
@@ -324,13 +325,13 @@ class OperatingSystem:
         is_successful = False
         
         if inst_type == "ADD" or inst_type == "ADDI" or inst_type == "SUB" or inst_type == "SUBI":     # For adder reservation station
-            if inst.get_is_fp() == True:
-                is_successful = self._fp_adder_reserv_st.store_inst(inst)
-            else:
-                is_successful = self._adder_reserv_st.store_inst(inst)
-        
-        if inst_type == "MUL" or inst_type == "DIVD":                          # For floating-point reservation station
+            is_successful = self._adder_reserv_st.store_inst(inst)
+
+        if inst_type == "ADD.D" or inst_type == "SUB.D":     # For adder reservation station
             is_successful = self._fp_adder_reserv_st.store_inst(inst)
+
+        if inst_type == "MULT.D":                          # For floating-point reservation station
+            is_successful = self._fp_mult_reserv_st.store_inst(inst)
 
         if inst_type == "LD":
             is_successful = self._load_store_reserv_st.store_inst(inst)
@@ -338,7 +339,7 @@ class OperatingSystem:
         if inst_type == "SD":
             is_successful = self._load_store_reserv_st.store_inst(inst)
 
-        if inst_type == "BEQ" or inst_type == "BNE" or inst_type == "BLT" or inst_type == "BGE":     # branch inst added to integer ALU
+        if inst_type == "BEQ" or inst_type == "BNE":     # branch inst added to integer ALU
             is_successful = self._adder_reserv_st.store_inst(inst)  
 
         return is_successful
@@ -381,23 +382,23 @@ class OperatingSystem:
                 if current_stage == "EX":
                     if is_executed == False:
                         # ---- First save the executed result to reservation station -> during WB, write to register -----
-                        if is_fp == True:
-                            res = self._fp_register[operand_2] + self._fp_register[operand_3]
-                            self._fp_adder_reserv_st.store_result(inst_reserv_idx, res)
-                        else:
-                            res = self._register[operand_2] + self._register[operand_3]
-                            self._adder_reserv_st.store_result(inst_reserv_idx, res)
+                        # if is_fp == True:
+                        #     res = self._fp_register[operand_2] + self._fp_register[operand_3]
+                        #     self._fp_adder_reserv_st.store_result(inst_reserv_idx, res)
+                        # else:
+                        res = self._register[operand_2] + self._register[operand_3]
+                        self._adder_reserv_st.store_result(inst_reserv_idx, res)
                         inst.set_is_executed()          # set the executed flag to True
                         inst.set_move_to_next_stage()  # takes 1 cycle in EX
                 elif current_stage == "WB":
                     inst.set_move_to_next_stage()      # takes 1 cycle in WB
-                    if is_fp == True:
-                        self._fp_register[operand_1] = self._fp_adder_reserv_st.get_reserv_content(inst_reserv_idx)   # write the result to register now
-                        self._fp_adder_reserv_st.clear_reserv_content(inst_reserv_idx)
-                    else:
-                        self._register[operand_1] = self._adder_reserv_st.get_reserv_content(inst_reserv_idx)   # write the result to register now
-                        # Clear the reservation station entry
-                        self._adder_reserv_st.clear_reserv_content(inst_reserv_idx)
+                    # if is_fp == True:
+                    #     self._fp_register[operand_1] = self._fp_adder_reserv_st.get_reserv_content(inst_reserv_idx)   # write the result to register now
+                    #     self._fp_adder_reserv_st.clear_reserv_content(inst_reserv_idx)
+                    # else:
+                    self._register[operand_1] = self._adder_reserv_st.get_reserv_content(inst_reserv_idx)   # write the result to register now
+                    # Clear the reservation station entry
+                    self._adder_reserv_st.clear_reserv_content(inst_reserv_idx)
                     # remove register from dependency list -> allow other instructions w/ dependencies to run
                     self.remove_from_dependency_list(operand_1)
                 else:
@@ -405,73 +406,120 @@ class OperatingSystem:
             case 'ADDI':
                 if current_stage == "EX":
                     if is_executed == False:
-                        if is_fp == True:
-                            res = self._fp_register[operand_2] + int(operand_3)
-                            self._fp_adder_reserv_st.store_result(inst_reserv_idx, res)
-                        else:
-                            res = self._register[operand_2] + int(operand_3)
-                            self._adder_reserv_st.store_result(inst_reserv_idx, res)
+                        # if is_fp == True:
+                        #     res = self._fp_register[operand_2] + int(operand_3)
+                        #     self._fp_adder_reserv_st.store_result(inst_reserv_idx, res)
+                        # else:
+                        res = self._register[operand_2] + int(operand_3)
+                        self._adder_reserv_st.store_result(inst_reserv_idx, res)
                         inst.set_is_executed()
                         inst.set_move_to_next_stage()  # takes 1 cycle in EX
                 elif current_stage == "WB":
                     inst.set_move_to_next_stage()      # takes 1 cycle in WB
-                    if is_fp == True:
-                        self._fp_register[operand_1] = self._fp_adder_reserv_st.get_reserv_content(inst_reserv_idx) # write the result to register now
-                        self._fp_adder_reserv_st.clear_reserv_content(inst_reserv_idx)
-                    else:
-                        self._register[operand_1] = self._adder_reserv_st.get_reserv_content(inst_reserv_idx) # write the result to register now
-                        self._adder_reserv_st.clear_reserv_content(inst_reserv_idx)
+                    # if is_fp == True:
+                    #     self._fp_register[operand_1] = self._fp_adder_reserv_st.get_reserv_content(inst_reserv_idx) # write the result to register now
+                    #     self._fp_adder_reserv_st.clear_reserv_content(inst_reserv_idx)
+                    # else:
+                    self._register[operand_1] = self._adder_reserv_st.get_reserv_content(inst_reserv_idx) # write the result to register now
+                    self._adder_reserv_st.clear_reserv_content(inst_reserv_idx)
+                    self.remove_from_dependency_list(operand_1)
+                else:
+                    inst.set_move_to_next_stage()      # takes 1 cycle in COMMIT
+            case 'ADD.D':
+                if current_stage == "EX":
+                    if is_executed == False:
+                        # ---- First save the executed result to reservation station -> during WB, write to register -----
+                        # if is_fp == True:
+                        res = self._fp_register[operand_2] + self._fp_register[operand_3]
+                        self._fp_adder_reserv_st.store_result(inst_reserv_idx, res)
+                        # else:
+                        # res = self._register[operand_2] + self._register[operand_3]
+                        # self._adder_reserv_st.store_result(inst_reserv_idx, res)
+                        inst.set_is_executed()          # set the executed flag to True
+                        inst.set_move_to_next_stage()  # takes 1 cycle in EX
+                elif current_stage == "WB":
+                    inst.set_move_to_next_stage()      # takes 1 cycle in WB
+                    # if is_fp == True:
+                    self._fp_register[operand_1] = self._fp_adder_reserv_st.get_reserv_content(inst_reserv_idx)   # write the result to register now
+                    self._fp_adder_reserv_st.clear_reserv_content(inst_reserv_idx)
+                    # else:
+                    # self._register[operand_1] = self._adder_reserv_st.get_reserv_content(inst_reserv_idx)   # write the result to register now
+                    # Clear the reservation station entry
+                    # self._adder_reserv_st.clear_reserv_content(inst_reserv_idx)
+                    # remove register from dependency list -> allow other instructions w/ dependencies to run
                     self.remove_from_dependency_list(operand_1)
                 else:
                     inst.set_move_to_next_stage()      # takes 1 cycle in COMMIT
             case 'SUB':
                 if current_stage == "EX":
                     if is_executed == False:
-                        if is_fp == True:
-                            res = self._fp_register[operand_2] - self._fp_register[operand_3]
-                            self._fp_adder_reserv_st.store_result(inst_reserv_idx, res)
-                        else:
-                            res = self._register[operand_2] - self._register[operand_3]
-                            self._adder_reserv_st.store_result(inst_reserv_idx, res)
+                        # if is_fp == True:
+                        #     res = self._fp_register[operand_2] - self._fp_register[operand_3]
+                        #     self._fp_adder_reserv_st.store_result(inst_reserv_idx, res)
+                        # else:
+                        res = self._register[operand_2] - self._register[operand_3]
+                        self._adder_reserv_st.store_result(inst_reserv_idx, res)
                         inst.set_is_executed()
                         inst.set_move_to_next_stage()  # takes 1 cycle in EX
                 elif current_stage == "WB":
                     inst.set_move_to_next_stage()      # takes 1 cycle in WB
-                    if is_fp == True:
-                        self._fp_register[operand_1] = self._fp_adder_reserv_st.get_reserv_content(inst_reserv_idx) # write the result to register now
-                        self._fp_adder_reserv_st.clear_reserv_content(inst_reserv_idx)
-                    else:
-                        self._register[operand_1] = self._adder_reserv_st.get_reserv_content(inst_reserv_idx) # write the result to register now
-                        self._adder_reserv_st.clear_reserv_content(inst_reserv_idx)
+                    # if is_fp == True:
+                    #     self._fp_register[operand_1] = self._fp_adder_reserv_st.get_reserv_content(inst_reserv_idx) # write the result to register now
+                    #     self._fp_adder_reserv_st.clear_reserv_content(inst_reserv_idx)
+                    # else:
+                    self._register[operand_1] = self._adder_reserv_st.get_reserv_content(inst_reserv_idx) # write the result to register now
+                    self._adder_reserv_st.clear_reserv_content(inst_reserv_idx)
                     self.remove_from_dependency_list(operand_1)
                 else:
                     inst.set_move_to_next_stage()      # takes 1 cycle in COMMIT
             case 'SUBI':
                 if current_stage == "EX":
                     if is_executed == False:
-                        if is_fp == True:
-                            res = self._fp_register[operand_2] - int(operand_3)
-                            self._fp_adder_reserv_st.store_result(inst_reserv_idx, res)
-                        else:
-                            res = self._register[operand_2] - int(operand_3)
-                            self._adder_reserv_st.store_result(inst_reserv_idx, res)
+                        # if is_fp == True:
+                        #     res = self._fp_register[operand_2] - int(operand_3)
+                        #     self._fp_adder_reserv_st.store_result(inst_reserv_idx, res)
+                        # else:
+                        res = self._register[operand_2] - int(operand_3)
+                        self._adder_reserv_st.store_result(inst_reserv_idx, res)
                         inst.set_is_executed()
                         inst.set_move_to_next_stage()  # takes 1 cycle in EX
                 elif current_stage == "WB":
                     inst.set_move_to_next_stage()      # takes 1 cycle in WB
-                    if is_fp == True:
-                        self._fp_register[operand_1] = self._fp_adder_reserv_st.get_reserv_content(inst_reserv_idx) # write the result to register now
-                        self._fp_adder_reserv_st.clear_reserv_content(inst_reserv_idx)
-                    else:
-                        self._register[operand_1] = self._adder_reserv_st.get_reserv_content(inst_reserv_idx) # write the result to register now
-                        self._adder_reserv_st.clear_reserv_content(inst_reserv_idx)
+                    # if is_fp == True:
+                    #     self._fp_register[operand_1] = self._fp_adder_reserv_st.get_reserv_content(inst_reserv_idx) # write the result to register now
+                    #     self._fp_adder_reserv_st.clear_reserv_content(inst_reserv_idx)
+                    # else:
+                    self._register[operand_1] = self._adder_reserv_st.get_reserv_content(inst_reserv_idx) # write the result to register now
+                    self._adder_reserv_st.clear_reserv_content(inst_reserv_idx)
+                    self.remove_from_dependency_list(operand_1)
+                else:
+                    inst.set_move_to_next_stage()      # takes 1 cycle in COMMIT
+            case 'SUB.D':
+                if current_stage == "EX":
+                    if is_executed == False:
+                        # if is_fp == True:
+                        res = self._fp_register[operand_2] - self._fp_register[operand_3]
+                        self._fp_adder_reserv_st.store_result(inst_reserv_idx, res)
+                        # else:
+                        # res = self._register[operand_2] - self._register[operand_3]
+                        # self._adder_reserv_st.store_result(inst_reserv_idx, res)
+                        inst.set_is_executed()
+                        inst.set_move_to_next_stage()  # takes 1 cycle in EX
+                elif current_stage == "WB":
+                    inst.set_move_to_next_stage()      # takes 1 cycle in WB
+                    # if is_fp == True:
+                    self._fp_register[operand_1] = self._fp_adder_reserv_st.get_reserv_content(inst_reserv_idx) # write the result to register now
+                    self._fp_adder_reserv_st.clear_reserv_content(inst_reserv_idx)
+                    # else:
+                    # self._register[operand_1] = self._adder_reserv_st.get_reserv_content(inst_reserv_idx) # write the result to register now
+                    # self._adder_reserv_st.clear_reserv_content(inst_reserv_idx)
                     self.remove_from_dependency_list(operand_1)
                 else:
                     inst.set_move_to_next_stage()      # takes 1 cycle in COMMIT
             # ***********************
             # *    FP Multiplier    *
             # ***********************
-            case 'MUL':
+            case 'MULT.D':
                 if current_stage == "EX":
                     if is_executed == False:
                         res = self._fp_register[operand_2] * self._fp_register[operand_3]
@@ -491,25 +539,25 @@ class OperatingSystem:
                     self.remove_from_dependency_list(operand_1)
                 else:
                     inst.set_move_to_next_stage()      # takes 1 cycle in COMMIT
-            case 'DIVD':
-                if current_stage == "EX":
-                    if is_executed == False:
-                        res = self._fp_register[operand_2] / self._fp_register[operand_3]
-                        self._fp_mult_reserv_st.store_result(inst_reserv_idx, res)
-                        inst.set_is_executed()
-                    else:
-                        if inst.get_cycle_counter() < self._config_data["fu_details"]["fp_multiplier"]["cycles_in_ex"]-1:
-                            inst.increment_cycle_counter()
-                        else:
-                            inst.set_move_to_next_stage()  # takes 2 cycles in EX
-                elif current_stage == "WB":
-                    inst.set_move_to_next_stage()      # takes 1 cycle in WB
-                    self._fp_register[operand_1] = self._fp_mult_reserv_st.get_reserv_content(inst_reserv_idx) # write the result to register now
+            # case 'DIVD':
+            #     if current_stage == "EX":
+            #         if is_executed == False:
+            #             res = self._fp_register[operand_2] / self._fp_register[operand_3]
+            #             self._fp_mult_reserv_st.store_result(inst_reserv_idx, res)
+            #             inst.set_is_executed()
+            #         else:
+            #             if inst.get_cycle_counter() < self._config_data["fu_details"]["fp_multiplier"]["cycles_in_ex"]-1:
+            #                 inst.increment_cycle_counter()
+            #             else:
+            #                 inst.set_move_to_next_stage()  # takes 2 cycles in EX
+            #     elif current_stage == "WB":
+            #         inst.set_move_to_next_stage()      # takes 1 cycle in WB
+            #         self._fp_register[operand_1] = self._fp_mult_reserv_st.get_reserv_content(inst_reserv_idx) # write the result to register now
 
-                    self._fp_mult_reserv_st.clear_reserv_content(inst_reserv_idx)
-                    self.remove_from_dependency_list(operand_1)
-                else:
-                    inst.set_move_to_next_stage()      # takes 1 cycle in COMMIT
+            #         self._fp_mult_reserv_st.clear_reserv_content(inst_reserv_idx)
+            #         self.remove_from_dependency_list(operand_1)
+            #     else:
+            #         inst.set_move_to_next_stage()      # takes 1 cycle in COMMIT
             # ***********************
             # *   Load Store Unit   *
             # ***********************
@@ -555,23 +603,12 @@ class OperatingSystem:
                 if current_stage == "EX":
                     if "(" in operand_2:
                         self.load_store_queue.append(inst)  # add to load/store queue
+                        print("SD ADDED TO QUEUE ", self.load_store_queue)
                         # self._load_store_reserv_st.store_result(inst_reserv_idx, )
                         inst.set_move_to_next_stage()
-                elif current_stage == "COMMIT":
-                    # check if top-most inst in queue is current inst SD -> if it is, perform operation
-                    if inst == self.load_store_queue[0]:
-                        offset, reg = self.split_number_and_parentheses(operand_2)
-                        if reg[0] == "R":
-                            base_addr = self._register[reg]
-                        elif reg[0] == "F":
-                            base_addr = self._fp_register[reg]
-                        # convert to word & find address, then store the content of register
-                        calculated_addr = (base_addr + offset) / 4
-                        self.memory.store_value(int(calculated_addr), self._register[operand_1])
 
-                        self.load_store_queue.pop(0)    # remove from queue
-                        inst.set_move_to_next_stage()
-                        self.remove_from_dependency_list(operand_2) # remove offset(addr) from dependency list
+                        inst_reserv_idx = inst.get_reserv_idx()
+                        self._load_store_reserv_st.clear_reserv_content(inst_reserv_idx)
                 else:
                     inst.set_move_to_next_stage()
 
@@ -609,7 +646,7 @@ class OperatingSystem:
                         else:
                             self._is_correctly_predicted = 1
 
-                        # self._adder_reserv_st.clear_reserv_content(inst.get_reserv_idx())
+                        self._adder_reserv_st.clear_reserv_content(inst.get_reserv_idx())
                 
                 elif current_stage == "COMMIT":
                     # if is_fp == True:
@@ -621,8 +658,48 @@ class OperatingSystem:
                 else:
                     inst.set_move_to_next_stage()
 
-            case 'BNE' | 'BLT' | 'BGE':
-                pass
+            case 'BNE':
+                # NOTE: During EX stage, it verifies the prediction (done by one-bit predictor)
+                if current_stage == "EX":
+                    # NOTE: for branches, check if predicted right
+                    is_predicted_correct = True
+                    if is_executed == False:
+                        # In case of fp-registers
+                        if is_fp == True:
+                            is_predicted_correct = True if self._fp_register[operand_1] != self._fp_register[operand_2] else False
+                            #self._fp_adder_reserv_st.store_result(inst_reserv_idx, is_predicted_correct)
+                        else:
+                            is_predicted_correct = True if self._register[operand_1] != self._register[operand_2] else False
+                            #self._adder_reserv_st.store_result(inst_reserv_idx, is_predicted_correct)
+
+                        inst.set_is_executed()
+                        inst.set_move_to_next_stage()  # takes 1 cycle in EX
+
+                        # Now compare with one-bit predictor
+                        predicted_earlier = self._one_bit_predictor.get_prediction()
+                        # If ISSUE prediction is wrong,
+                        if predicted_earlier != is_predicted_correct:
+                            self._one_bit_predictor.incorrect_prediction()  # switch the predictor to its opposite value (T->F, F->T)
+                            # NOTE: Pipeline flush happens
+                            self._pipeline_flush_flag = True    # trigger flush flag
+
+                            self._is_correctly_predicted = 2    # indicating incorrect prediction (used for prints)
+
+                        # If predicted correctly, then nothing happens
+                        else:
+                            self._is_correctly_predicted = 1
+
+                        self._adder_reserv_st.clear_reserv_content(inst.get_reserv_idx())
+                
+                elif current_stage == "COMMIT":
+                    # if is_fp == True:
+                    #     self._fp_adder_reserv_st.clear_reserv_content(inst_reserv_idx)
+                    # else:
+                    #     self._adder_reserv_st.clear_reserv_content(inst_reserv_idx)
+                    inst.set_move_to_next_stage()
+                        
+                else:
+                    inst.set_move_to_next_stage()
 
             case _:
                 print("--- WARNING: Opcode Not supported, thus ignored ---")
@@ -665,7 +742,7 @@ class OperatingSystem:
             # NOTE: STORE dependency works differently than other instructions
             is_dependent = False
             opcode = inst.get_opcode()
-            if opcode == "LD":
+            if opcode == "LD" or opcode=="ADDI":
                 is_dependent = self.check_dependency(inst.get_operand_2())
             elif opcode == "SD":
                 pass
@@ -680,7 +757,7 @@ class OperatingSystem:
             curr_stage = inst.get_stage()
 
             # keep a track of how many cycles spent in each stage before move to the next stage
-            if curr_stage != "ISSUE":
+            if curr_stage != "ISSUE" and curr_stage != "COMMIT":
                 cycle_spent = inst.get_cycle_counter()
                 inst.update_stage_cycle_counter(curr_stage, self._cycle - cycle_spent, self._cycle)
 
@@ -728,6 +805,23 @@ class OperatingSystem:
                         else:
                             del self._RAT[inst.get_operand_1()][0]
 
+                        # For SD (Since run operation happens first & update pipeline happens next):
+                        # check if top-most inst in queue is current inst SD -> if it is, perform operation
+                        if opcode == "SD":
+                            if inst == self.load_store_queue[0]:
+                                offset, reg = self.split_number_and_parentheses(inst.get_operand_2())
+                                if reg[0] == "R":
+                                    base_addr = self._register[reg]
+                                elif reg[0] == "F":
+                                    base_addr = self._fp_register[reg]
+                                # convert to word & find address, then store the content of register
+                                calculated_addr = (base_addr + offset) / 4
+                                self.memory.store_value(int(calculated_addr), self._register[inst.get_operand_1()])
+
+                                self.load_store_queue.pop(0)    # remove from queue
+                                # inst.set_move_to_next_stage()
+                                self.remove_from_dependency_list(inst.get_operand_2()) # remove offset(addr) from dependency list
+
                         self._running_inst -= 1
                     # Otherwise, stay in COMMIT stage
 
@@ -763,12 +857,14 @@ class OperatingSystem:
 
                 # Check what type of inst is the one we want to flush from pipeline
                 opcode_to_remove = inst.get_opcode()
+                inst_reserv_idx = inst.get_reserv_idx()
+                        
                 if opcode_to_remove == 'SD':    # Assume there's no BRNACH AFTER BRANCH
                     # Delete dependency from the list
                     self._dependency_list.pop()
                 elif opcode_to_remove[0] == 'B':
                     pass
-                else:
+                else:   # for ADD, SUB, etc. bc you also need to delete entry from RAT
                     # Delete entry from RAT (remove from end)
                     if len(self._RAT[inst.get_operand_1()]) != 0:
                         self._RAT[inst.get_operand_1()].pop()
@@ -782,8 +878,14 @@ class OperatingSystem:
                             self._dependency_list.pop()
 
                         # Also have to remove it from reservation station
-                        inst_reserv_idx = inst.get_reserv_idx()
                         self._load_store_reserv_st.clear_reserv_content(inst_reserv_idx)
+
+                if opcode_to_remove == "ADD" or opcode_to_remove == "SUB" or opcode_to_remove == "ADDI":
+                    self._adder_reserv_st.clear_reserv_content(inst_reserv_idx)
+                elif opcode_to_remove == "ADD.D" or opcode_to_remove == "SUB.D":
+                    self._fp_adder_reserv_st.clear_reserv_content(inst_reserv_idx)
+                elif opcode_to_remove == "MULT.D":
+                    self._fp_mult_reserv_st.clear_reserv_content(inst_reserv_idx)
 
                 # No need to remove dependencies for branch inst (bc it wasn't added)
 
@@ -1106,7 +1208,7 @@ def parse_configuration(file_path):
         if not stripped_line:  # Skip empty lines
             continue
 
-        if any(op in stripped_line for op in ["ADD", "SUB", "MUL", "ADDI", "SD", "LD", "BEQ", "BNE", "BLT", "BGE"]):
+        if any(op in stripped_line for op in ["ADD","ADD.D","ADDI","SUB","SUB.D","MULT.D", "SD", "LD", "BEQ", "BNE"]):
             config.setdefault("instructions", []).append(stripped_line)
             instruction_idx_cnt += 1
         else:
@@ -1137,7 +1239,7 @@ def main():
     # * Choose the testcase we would like to run *
     # ********************************************
 
-    file_to_run = "test_case_6.txt"
+    file_to_run = "temp_test_case_2.txt"
 
     print("\n**********************************")
     print("*         Initial Setup          *")
