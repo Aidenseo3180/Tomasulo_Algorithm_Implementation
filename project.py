@@ -1,5 +1,6 @@
-import pprint
 import re
+import os
+import pprint
 
 class ProcessControlBlock:
     """
@@ -113,7 +114,8 @@ class ReservationStation:
     """
     Reservation station that temporary holds the instruction
     """
-    def __init__(self, capacity: int):
+    def __init__(self, f, capacity: int):
+        self.f = f
         self._capacity = capacity
         self._is_full = False
 
@@ -146,7 +148,7 @@ class ReservationStation:
         self._reserv_station[idx] = None
 
     def print_reserv_station_content(self):
-        print(self._reserv_station)
+        print(self._reserv_station, file=self.f)
 
 
 class Memory:
@@ -211,19 +213,52 @@ class OperatingSystem:
     Class dedicated to conduct Tomasulo's Algorithm.
     Assume there's only 1 adder, 1 floating-point adder
     """
-    def __init__(self, config_data):
+    def __init__(self, config_data, file_to_run, folder_path):
         """
         Args:
             config_data: contains the configuration
         """
 
         self._config_data = config_data
+        self._file_to_run = file_to_run
+
+        output_file_name = f"output_{file_to_run}"
+        current_directory = os.getcwd() + folder_path
+        self._output_file_path = os.path.join(current_directory, output_file_name)
+
+        if os.path.exists(self._output_file_path):
+            with open(self._output_file_path, "w") as f:
+                f.truncate()  # This clears the content
+
+        # open the file & start writing to it
+        self.f = open(self._output_file_path, "w")
+
+        print("\n**********************************", file=self.f)
+        print("*         Initial Setup          *", file=self.f)
+        print("**********************************\n", file=self.f)
+
+        print(f"\nRunning test case: {self._file_to_run}\n", file=self.f)
+
+        # Access parsed data
+        print("Functional Units: ", file=self.f)
+        pprint.pprint(config_data["fu_details"], stream=self.f)
+        print("ROB Entries: ", end='', file=self.f)
+        print(config_data["rob_entries"], file=self.f)
+        print("CDB Buffer Entries: ", end='', file=self.f)
+        print(config_data["cdb_buffer_entries"], file=self.f)
+        print("Misprediction Penalty: ", end='', file=self.f)
+        print(config_data["misprediction_penalty"], file=self.f)
+        print("Registers: ", config_data["registers"], file=self.f)
+        print("Memory: ", config_data["memory"], file=self.f)
+        print("Label: ", config_data["label"], file=self.f)
+        print("Instructions: ", config_data["instructions"], file=self.f)
+
 
         # --------------- Read config data -----------------
         # read in instructions
         self._inst_buffer = self.parse_instructions(self._config_data['instructions'])
         if len(self._inst_buffer) == 0:
-            print("----- No instruction given to run, terminated -----")
+            print("----- No instruction given to run, terminated -----", file=self.f)
             return
 
         # *****************************
@@ -278,10 +313,10 @@ class OperatingSystem:
         self._active_instructions = []  # Keeps the ACTIVE inst
 
         # Reservation stations
-        self._adder_reserv_st = ReservationStation(config_data["fu_details"]['integer_adder']['rs'])
-        self._fp_adder_reserv_st = ReservationStation(config_data["fu_details"]['fp_adder']['rs'])
-        self._fp_mult_reserv_st = ReservationStation(config_data["fu_details"]['fp_multiplier']['rs'])
-        self._load_store_reserv_st = ReservationStation(config_data["fu_details"]['load_store_unit']['rs'])
+        self._adder_reserv_st = ReservationStation(self.f, config_data["fu_details"]['integer_adder']['rs'])
+        self._fp_adder_reserv_st = ReservationStation(self.f, config_data["fu_details"]['fp_adder']['rs'])
+        self._fp_mult_reserv_st = ReservationStation(self.f, config_data["fu_details"]['fp_multiplier']['rs'])
+        self._load_store_reserv_st = ReservationStation(self.f, config_data["fu_details"]['load_store_unit']['rs'])
 
         self._cycle = 0          # keep a track of cycles
 
@@ -603,7 +638,7 @@ class OperatingSystem:
                 if current_stage == "EX":
                     if "(" in operand_2:
                         self.load_store_queue.append(inst)  # add to load/store queue
-                        print("SD ADDED TO QUEUE ", self.load_store_queue)
+                        print("SD ADDED TO QUEUE ", self.load_store_queue, file=self.f)
                         # self._load_store_reserv_st.store_result(inst_reserv_idx, )
                         inst.set_move_to_next_stage()
 
@@ -702,7 +737,7 @@ class OperatingSystem:
                     inst.set_move_to_next_stage()
 
             case _:
-                print("--- WARNING: Opcode Not supported, thus ignored ---")
+                print("--- WARNING: Opcode Not supported, thus ignored ---", file=self.f)
                 raise Exception("Given Opcode Not Supported")
 
 
@@ -905,15 +940,16 @@ class OperatingSystem:
             self._is_commited = False
 
             if self._is_correctly_predicted == 1: # correct branch prediction
-                print("!!!!!!!!! Branch Prediction: Correctly Predicted !!!!!!!!!!!!")
+                print("!!!!!!!!! Branch Prediction: Correctly Predicted !!!!!!!!!!!!", file=self.f)
                 self._is_correctly_predicted = 0
 
             elif self._is_correctly_predicted == 2: # incorrect branch prediction
-                print("!!!!!!!!! Branch Prediction: Incorrectly Predicted !!!!!!!!!")
+                print("!!!!!!!!! Branch Prediction: Incorrectly Predicted !!!!!!!!!", file=self.f)
                 self._is_correctly_predicted = 0
 
             if self._pipeline_flush_flag == True:
-                print(f"========> Pipeline Flush Has Occurred. Misprediction Penalty of {self._config_data["misprediction_penalty"]} Applied <=========")
+                mp_val = self._config_data["misprediction_penalty"]
+                print(f"========> Pipeline Flush Has Occurred. Misprediction Penalty of {mp_val} Applied <=========", file=self.f)
                 self._pipeline_flush_flag = False
 
 
@@ -1006,14 +1042,14 @@ class OperatingSystem:
             self.print_pipeline()
 
             # Reservation Stations
-            print("Reservation Stations: ")
-            print("Integer Adder: ", end='')
+            print("Reservation Stations in Current Cycle: ", file=self.f)
+            print("Integer Adder: ", end='', file=self.f)
             self._adder_reserv_st.print_reserv_station_content()
-            print("FP Adder: ", end='')
+            print("FP Adder: ", end='', file=self.f)
             self._fp_adder_reserv_st.print_reserv_station_content()
-            print("FP Multplier: ", end='')
+            print("FP Multplier: ", end='', file=self.f)
             self._fp_mult_reserv_st.print_reserv_station_content()
-            print("Load Store: ", end='')
+            print("Load Store: ", end='', file=self.f)
             self._load_store_reserv_st.print_reserv_station_content()
 
         # Print Final Stat
@@ -1023,107 +1059,111 @@ class OperatingSystem:
         """
         Print the current pipeline
         """
-        print("--------------------------------------")
-        print(f"\nCurrent cycle: {self._cycle}\n")
+        print("\n--------------------------------------", file=self.f)
+        print(f"\nCurrent cycle: {self._cycle}\n", file=self.f)
 
         for inst in self._active_instructions:
             if inst.get_opcode() == "LD" or inst.get_opcode() == "SD":
-                print(f"{inst.get_opcode()} {inst.get_operand_1()} {inst.get_operand_2()} | ", end='')
+                print(f"{inst.get_opcode()} {inst.get_operand_1()} {inst.get_operand_2()} | ", end='', file=self.f)
             else:
-                print(f"{inst.get_opcode()} {inst.get_operand_1()} {inst.get_operand_2()} {inst.get_operand_3()} | ", end='')
+                print(f"{inst.get_opcode()} {inst.get_operand_1()} {inst.get_operand_2()} {inst.get_operand_3()} | ", end='', file=self.f)
             for key, value in inst.get_stage_cycle_counter().items():
                 if key != "Terminated":
-                    print(f"{key}:{value} ", end='')
-            print("\n")
+                    print(f"{key}:{value} ", end='', file=self.f)
+            print("\n", file=self.f)
 
     def print_final_stat(self):
         """
         Print the status of the internals
         """
 
-        print("\n***********************************")
-        print("*                                 *")
-        print("*  Internal Structure At the End  *")
-        print("*                                 *")
-        print("***********************************\n")
+        print("\n\n\nPipeline Finished, Start Printing the Final Overall Result...\n\n", file=self.f)
+
+        print("\n***********************************", file=self.f)
+        print("*                                 *", file=self.f)
+        print("*  Internal Structure At the End  *", file=self.f)
+        print("*                                 *", file=self.f)
+        print("***********************************\n", file=self.f)
 
         # Reservation Status
-        print("********************************")
-        print("* Reservation Statation Status *")
-        print("********************************\n")
+        print("********************************", file=self.f)
+        print("* Reservation Statation Status *", file=self.f)
+        print("********************************\n", file=self.f)
 
-        print("        Adder Reservation Station: ")
-        print("-----------------------------------------")
+        print("        Adder Reservation Station: ", file=self.f)
+        print("-----------------------------------------", file=self.f)
         self._adder_reserv_st.print_reserv_station_content()
-        print("\nFloating-Point Adder Reservation Station:")
-        print("-----------------------------------------")
+        print("\nFloating-Point Adder Reservation Station:", file=self.f)
+        print("-----------------------------------------", file=self.f)
         self._fp_adder_reserv_st.print_reserv_station_content()
-        print("\nFloating-Point Mult Reservation Station:")
-        print("-----------------------------------------")
+        print("\nFloating-Point Mult Reservation Station:", file=self.f)
+        print("-----------------------------------------", file=self.f)
         self._fp_mult_reserv_st.print_reserv_station_content()
-        print("\n    Load Store Reservation Station: ")
-        print("-----------------------------------------")
+        print("\n    Load Store Reservation Station: ", file=self.f)
+        print("-----------------------------------------", file=self.f)
         self._load_store_reserv_st.print_reserv_station_content()
 
         # Instruction Status (in pipeline form)
-        print("\n*******************************")
-        print("* Instruction Pipeline Status *")
-        print("*******************************\n")
+        print("\n*******************************", file=self.f)
+        print("* Instruction Pipeline Status *", file=self.f)
+        print("*******************************\n", file=self.f)
 
         for inst in self._active_instructions:
             if inst.get_opcode() == "LD" or inst.get_opcode() == "SD":
-                print(f"{inst.get_opcode()} {inst.get_operand_1()} {inst.get_operand_2()} | ", end='')
+                print(f"{inst.get_opcode()} {inst.get_operand_1()} {inst.get_operand_2()} | ", end='', file=self.f)
             else:
-                print(f"{inst.get_opcode()} {inst.get_operand_1()} {inst.get_operand_2()} {inst.get_operand_3()} | ", end='')
+                print(f"{inst.get_opcode()} {inst.get_operand_1()} {inst.get_operand_2()} {inst.get_operand_3()} | ", end='', file=self.f)
             for key, value in inst.get_stage_cycle_counter().items():
                 if key != "Terminated":
-                    print(f"{key}:{value} ", end='')
-            print("\n")
+                    print(f"{key}:{value} ", end='', file=self.f)
+            print("\n", file=self.f)
 
         # Register result status
-        print("\n***************************")
-        print("* Register Content Status *")
-        print("***************************\n")
-        print("Integer Register\n")
+        print("\n***************************", file=self.f)
+        print("* Register Content Status *", file=self.f)
+        print("***************************\n", file=self.f)
+        print("Integer Register\n", file=self.f)
         counter = 0
         for key, value in self._register.items():                
             if counter < 10:
                 counter += 1
-                print(f"{key}:{value}  ", end='')
+                print(f"{key}:{value}  ", end='', file=self.f)
             else:
                 if key == "R15":
-                    print(f"{key}:{value}  ")
+                    print(f"{key}:{value}  ", file=self.f)
                 else:
-                    print(f"{key}:{value}  ", end='')
+                    print(f"{key}:{value}  ", end='', file=self.f)
 
 
-        print("\n\nFloating-Point Register\n")
+        print("\n\nFloating-Point Register\n", file=self.f)
         counter = 0
         for key, value in self._fp_register.items():
             if counter < 10:
                 counter += 1
-                print(f"{key}:{value}  ", end='')
+                print(f"{key}:{value}  ", end='', file=self.f)
             else: 
                 if key == "F15":
-                    print(f"{key}:{value}  ")
+                    print(f"{key}:{value}  ", file=self.f)
                 else:
-                    print(f"{key}:{value}  ", end='')
+                    print(f"{key}:{value}  ", end='', file=self.f)
 
         # Memory
-        print("\n\n*************************")
-        print("* Memory Content Status *")
-        print("*************************\n")
+        print("\n\n*************************", file=self.f)
+        print("* Memory Content Status *", file=self.f)
+        print("*************************\n", file=self.f)
         for i in range(0, 64):
             memory_val = self.memory.load_value(i)
             if i % 7 == 0 and i != 0:
-                print(f"Memory[{i*4}]:{memory_val}  ")
+                print(f"Memory[{i*4}]:{memory_val}  ", file=self.f)
             else:
-                print(f"Memory[{i*4}]:{memory_val}  ", end='')
+                print(f"Memory[{i*4}]:{memory_val}  ", end='', file=self.f)
 
 
-        print(f"\n\nTotal number of cycles: {self._cycle}\n")
+        print(f"\n\nTotal number of cycles: {self._cycle}\n", file=self.f)
  
-        print("\n**********************************\n")
+        print("\n**********************************\n", file=self.f)
+
+        self.f.close()
 
     def parse_instructions(self, instructions_list):
         instructions = []
@@ -1232,41 +1272,3 @@ def parse_configuration(file_path):
                 config["label"][label_name] = instruction_idx_cnt
 
     return config
-
-def main():
-
-    # ********************************************
-    # * Choose the testcase we would like to run *
-    # ********************************************
-
-    file_to_run = "test_case_1.txt"
-
-    print("\n**********************************")
-    print("*         Initial Setup          *")
-    print("**********************************\n")
-
-    print(f"\nRunning test case: {file_to_run}\n")
-
-    config_data = parse_configuration(file_to_run)
-    # Access parsed data
-    print("Functional Units: ")
-    pprint.pprint(config_data["fu_details"])
-    print("ROB Entries: ", end='')
-    pprint.pprint(config_data["rob_entries"])
-    print("CDB Buffer Entries: ", end='')
-    pprint.pprint(config_data["cdb_buffer_entries"])
-    print("Misprediction Penalty: ", end='')
-    print(config_data["misprediction_penalty"])
-    print("Registers: ", config_data["registers"])
-    print("Memory: ", config_data["memory"])
-    print("Label: ", config_data["label"])
-    print("Instructions: ", config_data["instructions"])
-
-    # # -------------- Actual Run ---------------
-
-    OperatingSystem(
-        config_data=config_data
-    )
-
-if __name__ == '__main__':
-    main()
