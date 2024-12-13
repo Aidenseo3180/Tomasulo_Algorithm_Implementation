@@ -25,13 +25,13 @@ def main():
     # * Choose the testcase we would like to run *
     # ********************************************
 
-    # Run each file in this list
+    # Run each file in this list # "testcase-addd.txt"
     files_to_run = [
-        "test_case_1.txt", 
-        "test_case_2.txt", 
-        "test_case_3.txt", 
-        "test_case_4.txt", 
-        "test_case_5.txt", 
+        "test_case_1.txt",
+        "test_case_2.txt",
+        "test_case_3.txt",
+        "test_case_4.txt",
+        "test_case_5.txt",
         "test_case_6.txt"
     ]
 

@@ -23,7 +23,7 @@ Functional Units:
 ROB Entries: 128
 CDB Buffer Entries: 1
 Misprediction Penalty: 3
-Registers:  {'R1': 10, 'R2': 5, 'R4': 8, 'R5': 5, 'R7': 20, 'F1': 5, 'F2': 6}
+Registers:  {'R1': 10, 'R2': 5, 'R4': 8, 'R5': 5, 'R7': 20, 'F1': 5.0, 'F2': 6.0}
 Memory:  {}
 Label:  {}
 Instructions:  ['ADD R3,R1,R2', 'SUB R6,R4,R5', 'ADDI R8,R7,10', 'MULT.D F3,F1,F2']
@@ -103,7 +103,7 @@ MULT.D F3 F1 F2 | ISSUE:(4, 4) EX:() MEM:() WB:() COMMIT:()
 Reservation Stations in Current Cycle: 
 Integer Adder: [None, None, None]
 FP Adder: [None, None, None]
-FP Multplier: [30, None]
+FP Multplier: [30.0, None]
 Load Store: [None, None, None]
 
 --------------------------------------
@@ -121,7 +121,7 @@ MULT.D F3 F1 F2 | ISSUE:(4, 4) EX:() MEM:() WB:() COMMIT:()
 Reservation Stations in Current Cycle: 
 Integer Adder: [None, None, None]
 FP Adder: [None, None, None]
-FP Multplier: [30, None]
+FP Multplier: [30.0, None]
 Load Store: [None, None, None]
 
 --------------------------------------
@@ -139,7 +139,7 @@ MULT.D F3 F1 F2 | ISSUE:(4, 4) EX:() MEM:() WB:() COMMIT:()
 Reservation Stations in Current Cycle: 
 Integer Adder: [None, None, None]
 FP Adder: [None, None, None]
-FP Multplier: [30, None]
+FP Multplier: [30.0, None]
 Load Store: [None, None, None]
 
 --------------------------------------
@@ -157,7 +157,7 @@ MULT.D F3 F1 F2 | ISSUE:(4, 4) EX:() MEM:() WB:() COMMIT:()
 Reservation Stations in Current Cycle: 
 Integer Adder: [None, None, None]
 FP Adder: [None, None, None]
-FP Multplier: [30, None]
+FP Multplier: [30.0, None]
 Load Store: [None, None, None]
 
 --------------------------------------
@@ -175,7 +175,7 @@ MULT.D F3 F1 F2 | ISSUE:(4, 4) EX:() MEM:() WB:() COMMIT:()
 Reservation Stations in Current Cycle: 
 Integer Adder: [None, None, None]
 FP Adder: [None, None, None]
-FP Multplier: [30, None]
+FP Multplier: [30.0, None]
 Load Store: [None, None, None]
 
 --------------------------------------
@@ -193,7 +193,7 @@ MULT.D F3 F1 F2 | ISSUE:(4, 4) EX:() MEM:() WB:() COMMIT:()
 Reservation Stations in Current Cycle: 
 Integer Adder: [None, None, None]
 FP Adder: [None, None, None]
-FP Multplier: [30, None]
+FP Multplier: [30.0, None]
 Load Store: [None, None, None]
 
 --------------------------------------
@@ -211,7 +211,7 @@ MULT.D F3 F1 F2 | ISSUE:(4, 4) EX:() MEM:() WB:() COMMIT:()
 Reservation Stations in Current Cycle: 
 Integer Adder: [None, None, None]
 FP Adder: [None, None, None]
-FP Multplier: [30, None]
+FP Multplier: [30.0, None]
 Load Store: [None, None, None]
 
 --------------------------------------
@@ -229,7 +229,7 @@ MULT.D F3 F1 F2 | ISSUE:(4, 4) EX:() MEM:() WB:() COMMIT:()
 Reservation Stations in Current Cycle: 
 Integer Adder: [None, None, None]
 FP Adder: [None, None, None]
-FP Multplier: [30, None]
+FP Multplier: [30.0, None]
 Load Store: [None, None, None]
 
 --------------------------------------
@@ -247,7 +247,7 @@ MULT.D F3 F1 F2 | ISSUE:(4, 4) EX:() MEM:() WB:() COMMIT:()
 Reservation Stations in Current Cycle: 
 Integer Adder: [None, None, None]
 FP Adder: [None, None, None]
-FP Multplier: [30, None]
+FP Multplier: [30.0, None]
 Load Store: [None, None, None]
 
 --------------------------------------
@@ -265,7 +265,7 @@ MULT.D F3 F1 F2 | ISSUE:(4, 4) EX:() MEM:() WB:() COMMIT:()
 Reservation Stations in Current Cycle: 
 Integer Adder: [None, None, None]
 FP Adder: [None, None, None]
-FP Multplier: [30, None]
+FP Multplier: [30.0, None]
 Load Store: [None, None, None]
 
 --------------------------------------
@@ -283,7 +283,7 @@ MULT.D F3 F1 F2 | ISSUE:(4, 4) EX:() MEM:() WB:() COMMIT:()
 Reservation Stations in Current Cycle: 
 Integer Adder: [None, None, None]
 FP Adder: [None, None, None]
-FP Multplier: [30, None]
+FP Multplier: [30.0, None]
 Load Store: [None, None, None]
 
 --------------------------------------
@@ -301,7 +301,7 @@ MULT.D F3 F1 F2 | ISSUE:(4, 4) EX:() MEM:() WB:() COMMIT:()
 Reservation Stations in Current Cycle: 
 Integer Adder: [None, None, None]
 FP Adder: [None, None, None]
-FP Multplier: [30, None]
+FP Multplier: [30.0, None]
 Load Store: [None, None, None]
 
 --------------------------------------
@@ -319,7 +319,7 @@ MULT.D F3 F1 F2 | ISSUE:(4, 4) EX:() MEM:() WB:() COMMIT:()
 Reservation Stations in Current Cycle: 
 Integer Adder: [None, None, None]
 FP Adder: [None, None, None]
-FP Multplier: [30, None]
+FP Multplier: [30.0, None]
 Load Store: [None, None, None]
 
 --------------------------------------
@@ -337,7 +337,7 @@ MULT.D F3 F1 F2 | ISSUE:(4, 4) EX:() MEM:() WB:() COMMIT:()
 Reservation Stations in Current Cycle: 
 Integer Adder: [None, None, None]
 FP Adder: [None, None, None]
-FP Multplier: [30, None]
+FP Multplier: [30.0, None]
 Load Store: [None, None, None]
 
 --------------------------------------
@@ -355,7 +355,7 @@ MULT.D F3 F1 F2 | ISSUE:(4, 4) EX:() MEM:() WB:() COMMIT:()
 Reservation Stations in Current Cycle: 
 Integer Adder: [None, None, None]
 FP Adder: [None, None, None]
-FP Multplier: [30, None]
+FP Multplier: [30.0, None]
 Load Store: [None, None, None]
 
 --------------------------------------
@@ -373,7 +373,7 @@ MULT.D F3 F1 F2 | ISSUE:(4, 4) EX:() MEM:() WB:() COMMIT:()
 Reservation Stations in Current Cycle: 
 Integer Adder: [None, None, None]
 FP Adder: [None, None, None]
-FP Multplier: [30, None]
+FP Multplier: [30.0, None]
 Load Store: [None, None, None]
 
 --------------------------------------
@@ -391,7 +391,7 @@ MULT.D F3 F1 F2 | ISSUE:(4, 4) EX:() MEM:() WB:() COMMIT:()
 Reservation Stations in Current Cycle: 
 Integer Adder: [None, None, None]
 FP Adder: [None, None, None]
-FP Multplier: [30, None]
+FP Multplier: [30.0, None]
 Load Store: [None, None, None]
 
 --------------------------------------
@@ -409,7 +409,7 @@ MULT.D F3 F1 F2 | ISSUE:(4, 4) EX:() MEM:() WB:() COMMIT:()
 Reservation Stations in Current Cycle: 
 Integer Adder: [None, None, None]
 FP Adder: [None, None, None]
-FP Multplier: [30, None]
+FP Multplier: [30.0, None]
 Load Store: [None, None, None]
 
 --------------------------------------
@@ -427,7 +427,7 @@ MULT.D F3 F1 F2 | ISSUE:(4, 4) EX:() MEM:() WB:() COMMIT:()
 Reservation Stations in Current Cycle: 
 Integer Adder: [None, None, None]
 FP Adder: [None, None, None]
-FP Multplier: [30, None]
+FP Multplier: [30.0, None]
 Load Store: [None, None, None]
 
 --------------------------------------
@@ -445,7 +445,7 @@ MULT.D F3 F1 F2 | ISSUE:(4, 4) EX:(5, 24) MEM:() WB:() COMMIT:()
 Reservation Stations in Current Cycle: 
 Integer Adder: [None, None, None]
 FP Adder: [None, None, None]
-FP Multplier: [30, None]
+FP Multplier: [30.0, None]
 Load Store: [None, None, None]
 
 --------------------------------------
@@ -540,7 +540,7 @@ R16:0  R17:0  R18:0  R19:0  R20:0  R21:0  R22:0  R23:0  R24:0  R25:0  R26:0  R27
 
 Floating-Point Register
 
-F0:0  F1:5  F2:6  F3:30  F4:0  F5:0  F6:0  F7:0  F8:0  F9:0  F10:0  F11:0  F12:0  F13:0  F14:0  F15:0  
+F0:0  F1:5.0  F2:6.0  F3:30.0  F4:0  F5:0  F6:0  F7:0  F8:0  F9:0  F10:0  F11:0  F12:0  F13:0  F14:0  F15:0  
 F16:0  F17:0  F18:0  F19:0  F20:0  F21:0  F22:0  F23:0  F24:0  F25:0  F26:0  F27:0  F28:0  F29:0  F30:0  F31:0  
 
 *************************

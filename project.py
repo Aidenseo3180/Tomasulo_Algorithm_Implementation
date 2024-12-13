@@ -2,6 +2,7 @@ import re
 import os
 import pprint
 
+
 class ProcessControlBlock:
     """
     Tracks the progress of the individual instruction
@@ -109,7 +110,7 @@ class ProcessControlBlock:
     
     def get_is_fp(self):
         return self._is_fp
-
+    
 class ReservationStation:
     """
     Reservation station that temporary holds the instruction
@@ -348,8 +349,94 @@ class OperatingSystem:
         
         self._running_inst = 0
 
+        self._parsed_instructions = None
+        self._parsed_instructions_is_dependent = []
+
         self.run_pipeline()
 
+    def check_dependency(self, current_inst):
+
+        self._parsed_instructions = []
+
+        for idx, inst in enumerate(self._active_instructions):
+
+            stage = inst.get_stage()
+            if stage == "Terminated" or stage == "COMMIT":
+                continue
+
+            op = inst.get_opcode()
+
+            if inst == current_inst:
+                break
+
+            if op in ["LD", "SD"]:
+                # Load and Store instructions
+                if op == "LD":
+                    if stage == "WB" or stage == "COMMIT":
+                        continue
+
+                    des = inst.get_operand_1()  # Destination register
+                    src1 = inst.get_operand_2()  # Base register as source 1
+                    src2 = None
+                elif op == "SD":
+                    if stage == "COMMIT":
+                        continue
+
+                    des = None  # Store doesn't have a destination
+                    src1 = inst.get_operand_1()  # Source register to store
+                    # src2 = base  # Base register as source 2
+                    src2 = None
+            elif op[0] == 'B':
+                # if branch, only check 1 and 2
+                if stage == "COMMIT":
+                    continue
+                des = None
+                src1 = inst.get_operand_1()
+                src2 = inst.get_operand_2()
+            else:
+                if stage == "COMMIT":
+                    continue
+                des = inst.get_operand_1()
+                src1 = inst.get_operand_2()
+                src2 = inst.get_operand_3()
+
+            self._parsed_instructions.append((stage, op, des, src1, src2))
+
+        # print(self._parsed_instructions)
+        # Check dependencies with earlier instructions
+
+        op = current_inst.get_opcode()
+
+        if op in ["LD", "SD"]:
+            # Load and Store instructions
+            if op == "LD":
+                des = current_inst.get_operand_1()  # Destination register
+                src1 = current_inst.get_operand_2()  # Base register as source 1
+                src2 = None
+        elif op == "SD":
+                des = None  # Store doesn't have a destination
+                src1 = current_inst.get_operand_1()  # Source register to store
+                # src2 = base  # Base register as source 2
+                src2 = None
+        elif op[0] == 'B':
+            # if branch, only check 1 and 2
+            des = None
+            src1 = current_inst.get_operand_1()
+            src2 = current_inst.get_operand_2()
+        else:
+            des = current_inst.get_operand_1()
+            src1 = current_inst.get_operand_2()
+            src2 = current_inst.get_operand_3()
+
+        for prev_idx, (prev_stage, prev_op, prev_dest, prev_src1, prev_src2) in enumerate(self._parsed_instructions[:-1]):
+            if des == prev_dest:
+                return True  # WAW
+            if des == prev_src1 or des == prev_src2:
+                return True  # WAR
+            if (src1 == prev_dest or src2 == prev_dest):
+                return True  # RAW
+                
+        return False
 
     def find_free_reservation(self, inst: ProcessControlBlock):
         """
@@ -370,6 +457,7 @@ class OperatingSystem:
 
         if inst_type == "LD":
             is_successful = self._load_store_reserv_st.store_inst(inst)
+            self._load_store_reserv_st.print_reserv_station_content()
 
         if inst_type == "SD":
             is_successful = self._load_store_reserv_st.store_inst(inst)
@@ -378,20 +466,6 @@ class OperatingSystem:
             is_successful = self._adder_reserv_st.store_inst(inst)  
 
         return is_successful
-        
-
-    def check_dependency(self, operand_2="", operand_3=""):
-        # ----- If there's a dependency -> return True ------
-        if operand_2 in self._dependency_list or operand_3 in self._dependency_list:
-            return True # indicate dependency exist
-        
-        return False    # no dependency
-
-
-    def remove_from_dependency_list(self, register_name):
-        if register_name in self._dependency_list:
-            self._dependency_list.remove(register_name)
-
 
     def perform_operation(self, inst: ProcessControlBlock):
         # Depends on the opcode, run different stages
@@ -435,7 +509,7 @@ class OperatingSystem:
                     # Clear the reservation station entry
                     self._adder_reserv_st.clear_reserv_content(inst_reserv_idx)
                     # remove register from dependency list -> allow other instructions w/ dependencies to run
-                    self.remove_from_dependency_list(operand_1)
+                    # self.remove_from_dependency_list(operand_1)
                 else:
                     inst.set_move_to_next_stage()      # takes 1 cycle in COMMIT
             case 'ADDI':
@@ -457,7 +531,7 @@ class OperatingSystem:
                     # else:
                     self._register[operand_1] = self._adder_reserv_st.get_reserv_content(inst_reserv_idx) # write the result to register now
                     self._adder_reserv_st.clear_reserv_content(inst_reserv_idx)
-                    self.remove_from_dependency_list(operand_1)
+                    # self.remove_from_dependency_list(operand_1)
                 else:
                     inst.set_move_to_next_stage()      # takes 1 cycle in COMMIT
             case 'ADD.D':
@@ -482,7 +556,12 @@ class OperatingSystem:
                     # Clear the reservation station entry
                     # self._adder_reserv_st.clear_reserv_content(inst_reserv_idx)
                     # remove register from dependency list -> allow other instructions w/ dependencies to run
-                    self.remove_from_dependency_list(operand_1)
+                    if operand_1 not in self._dependency_list:
+                        self._dependency_list.append(operand_1)
+                    else:
+                    #    self.remove_from_dependency_list(operand_1)
+                        pass
+
                 else:
                     inst.set_move_to_next_stage()      # takes 1 cycle in COMMIT
             case 'SUB':
@@ -504,7 +583,7 @@ class OperatingSystem:
                     # else:
                     self._register[operand_1] = self._adder_reserv_st.get_reserv_content(inst_reserv_idx) # write the result to register now
                     self._adder_reserv_st.clear_reserv_content(inst_reserv_idx)
-                    self.remove_from_dependency_list(operand_1)
+                    # self.remove_from_dependency_list(operand_1)
                 else:
                     inst.set_move_to_next_stage()      # takes 1 cycle in COMMIT
             case 'SUBI':
@@ -526,7 +605,7 @@ class OperatingSystem:
                     # else:
                     self._register[operand_1] = self._adder_reserv_st.get_reserv_content(inst_reserv_idx) # write the result to register now
                     self._adder_reserv_st.clear_reserv_content(inst_reserv_idx)
-                    self.remove_from_dependency_list(operand_1)
+                    # self.remove_from_dependency_list(operand_1)
                 else:
                     inst.set_move_to_next_stage()      # takes 1 cycle in COMMIT
             case 'SUB.D':
@@ -548,7 +627,7 @@ class OperatingSystem:
                     # else:
                     # self._register[operand_1] = self._adder_reserv_st.get_reserv_content(inst_reserv_idx) # write the result to register now
                     # self._adder_reserv_st.clear_reserv_content(inst_reserv_idx)
-                    self.remove_from_dependency_list(operand_1)
+                    # self.remove_from_dependency_list(operand_1)
                 else:
                     inst.set_move_to_next_stage()      # takes 1 cycle in COMMIT
             # ***********************
@@ -571,7 +650,7 @@ class OperatingSystem:
                     self._fp_register[operand_1] = self._fp_mult_reserv_st.get_reserv_content(inst_reserv_idx) # write the result to register now
 
                     self._fp_mult_reserv_st.clear_reserv_content(inst_reserv_idx)
-                    self.remove_from_dependency_list(operand_1)
+                    # self.remove_from_dependency_list(operand_1)
                 else:
                     inst.set_move_to_next_stage()      # takes 1 cycle in COMMIT
             # case 'DIVD':
@@ -623,13 +702,14 @@ class OperatingSystem:
                     if inst.get_cycle_counter() < self._config_data["fu_details"]["load_store_unit"]["cycles_in_mem"]-1:    # FP multiplier EX count
                         inst.increment_cycle_counter()
                     else:
+                        
                         val = self._load_store_reserv_st.get_reserv_content(inst_reserv_idx)
                         self._register[operand_1] = val # TODO: find whether it's reg or FP reg. Also, save to reservation station first
                         self.load_store_queue.pop(0)
                         inst.set_move_to_next_stage()  # takes 2 cycles in EX
 
                         # remove from dependency list
-                        self.remove_from_dependency_list(operand_1)
+                        # self.remove_from_dependency_list(operand_1)
                         self._load_store_reserv_st.clear_reserv_content(inst_reserv_idx)
                 else:
                     inst.set_move_to_next_stage()
@@ -638,7 +718,6 @@ class OperatingSystem:
                 if current_stage == "EX":
                     if "(" in operand_2:
                         self.load_store_queue.append(inst)  # add to load/store queue
-                        print("SD ADDED TO QUEUE ", self.load_store_queue, file=self.f)
                         # self._load_store_reserv_st.store_result(inst_reserv_idx, )
                         inst.set_move_to_next_stage()
 
@@ -759,7 +838,6 @@ class OperatingSystem:
         else:
             raise ValueError("Input string is not in the expected format 'number(content)'")
 
-
     def run_pipeline(self):
         """
         Run Tomasulo's Algorithm
@@ -773,24 +851,18 @@ class OperatingSystem:
             if move_to_next == False:   # if can't move to next stage, don't
                 return
             
+            curr_stage = inst.get_stage()
+            
             # --------- Check for dependency before entering EX stage --------------
             # NOTE: STORE dependency works differently than other instructions
             is_dependent = False
             opcode = inst.get_opcode()
-            if opcode == "LD" or opcode=="ADDI":
-                is_dependent = self.check_dependency(inst.get_operand_2())
-            elif opcode == "SD":
-                pass
-            elif opcode[0] == 'B':  # for BEQ, BNZ, etc. check operand 1 and 2 for dependencies
-                is_dependent = self.check_dependency(inst.get_operand_1(), inst.get_operand_2())
-            else:
-                is_dependent = self.check_dependency(inst.get_operand_2(), inst.get_operand_3())
-            
+            if curr_stage == "ISSUE":
+                is_dependent = self.check_dependency(inst)
+
             if is_dependent == True:
                 return
-
-            curr_stage = inst.get_stage()
-
+            
             # keep a track of how many cycles spent in each stage before move to the next stage
             if curr_stage != "ISSUE" and curr_stage != "COMMIT":
                 cycle_spent = inst.get_cycle_counter()
@@ -822,6 +894,7 @@ class OperatingSystem:
 
                 case "COMMIT":
                     # When COMMIT is reached, update the flag in ROB entries
+
                     if opcode == "SD" or opcode[0] == 'B':
                         
                         ROB_idx = inst.get_SD_helpr()
@@ -852,12 +925,12 @@ class OperatingSystem:
                                 # convert to word & find address, then store the content of register
                                 calculated_addr = (base_addr + offset) / 4
                                 self.memory.store_value(int(calculated_addr), self._register[inst.get_operand_1()])
-
                                 self.load_store_queue.pop(0)    # remove from queue
                                 # inst.set_move_to_next_stage()
-                                self.remove_from_dependency_list(inst.get_operand_2()) # remove offset(addr) from dependency list
+                                # self.remove_from_dependency_list(inst.get_operand_2()) # remove offset(addr) from dependency list
 
                         self._running_inst -= 1
+
                     # Otherwise, stay in COMMIT stage
 
             # reset the flag and counter (bc we just used the counter to track # of cycles spent in each stage)
@@ -994,7 +1067,8 @@ class OperatingSystem:
 
                         # Add to Dependency List
                         if inst.get_opcode() == "SD":
-                            self._dependency_list.append(inst.get_operand_2()) # use offset(addr) as dependency check instead
+                            # self._dependency_list.append(inst.get_operand_1()) # use offset(addr) as dependency check instead
+                            pass
                         elif inst.get_opcode()[0] == 'B':
                             # For branches, don't add to dependency list
                             # Don't add dependencies for branches
@@ -1028,7 +1102,8 @@ class OperatingSystem:
                     cycle_penalty -= 1
 
             # ----- iterate through the ACTIVE instructions to progress -----
-            for inst in self._active_instructions:
+            for idx, inst in enumerate(self._active_instructions):
+                
                 if inst.get_stage() != "Terminated":
                     # ----- Run each operation in pipeline -----
                     self.perform_operation(inst)
@@ -1051,6 +1126,7 @@ class OperatingSystem:
             self._fp_mult_reserv_st.print_reserv_station_content()
             print("Load Store: ", end='', file=self.f)
             self._load_store_reserv_st.print_reserv_station_content()
+            # print(self._dependency_list)
 
         # Print Final Stat
         self.print_final_stat()
@@ -1260,11 +1336,11 @@ def parse_configuration(file_path):
 
             if stripped_line.startswith("F") and len(stripped_line.split()) == 2:
                 register, value = stripped_line.split()
-                config["registers"][register] = int(value)
+                config["registers"][register] = float(value)
 
             if stripped_line.startswith("MEM") and len(stripped_line.split()) == 2:
                 memory, value = stripped_line.split()
-                config["memory"][memory[4:-1]] = int(value)
+                config["memory"][memory[4:-1]] = float(value)
 
             # If reads in branch label, save it!
             if stripped_line.endswith(":"):
