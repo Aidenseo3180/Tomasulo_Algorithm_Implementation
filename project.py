@@ -390,6 +390,8 @@ class OperatingSystem:
                 src1 = inst.get_operand_1()
                 src2 = inst.get_operand_2()
             else:
+                # if stage == "WB":
+                #     continue
                 des = inst.get_operand_1()
                 src1 = inst.get_operand_2()
                 src2 = inst.get_operand_3()
@@ -957,7 +959,7 @@ class OperatingSystem:
                 # Clear reservation station for BEQ
                 # self._adder_reserv_st.clear_reserv_content(self._active_instructions[-2].get_reserv_idx())
 
-                # Remove the last 2 instructions from active inst.
+                # Remove all instructions after the branch from active inst.
                 self._active_instructions.pop()
                 #self._active_instructions.pop()
 
@@ -1126,7 +1128,7 @@ class OperatingSystem:
             self._fp_mult_reserv_st.print_reserv_station_content()
             print("Load Store: ", end='', file=self.f)
             self._load_store_reserv_st.print_reserv_station_content()
-            # print(self._dependency_list)
+            # print(self._register, file=self.f)
 
         # Print Final Stat
         self.print_final_stat()
