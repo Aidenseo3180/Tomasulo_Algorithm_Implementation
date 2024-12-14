@@ -27,7 +27,13 @@ def main():
 
     # Run each file in this list
     files_to_run = [
-        "test_case_4.txt"
+        "test_case_1.txt",
+        "test_case_2.txt",
+        "test_case_3.txt",
+        "test_case_4.txt",
+        "test_case_5.txt",
+        "test_case_6.txt",
+        "testcase-addd.txt"
     ]
 
     for file in files_to_run:
