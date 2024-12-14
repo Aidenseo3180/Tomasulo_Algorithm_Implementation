@@ -304,9 +304,9 @@ class OperatingSystem:
 
         # Use RAT to map each instruction with each entry of ROB
         self._RAT = {}                  # RAT (source mapping) {"R1": ["# index of ROB entry", "# index of ROB entry", etc.]}
-        for i in range(0, 16):
+        for i in range(0, 31):
             self._RAT[f"R{i}"] = []
-        for i in range(0, 16):
+        for i in range(0, 31):
             self._RAT[f"F{i}"] = []
         
         self._CDB_buffer_entries = self._config_data["cdb_buffer_entries"]
@@ -902,6 +902,7 @@ class OperatingSystem:
                             self._ROB_entries[ROB_idx].set_finish_bit()     # For SD & B_, stay in Commit until it's their time to commit
                     else:
                         ROB_idx = self._RAT[inst.get_operand_1()][0]
+                    
                     if self._ROB_head_pointer == ROB_idx and self._is_commited == False:
                         self._ROB_head_pointer += 1
                         inst.update_stage_cycle_counter(curr_stage, self._cycle, self._cycle)
@@ -948,85 +949,9 @@ class OperatingSystem:
         while(len(self._inst_buffer) != 0 or self._running_inst > 0):
             self._cycle += 1
 
-            # NOTE:
-            # If pipeline flush has occurred -> then the latest, most recent 2 instructions (branch + 1 more inst it ran after) in pipeline are the ones we want to remove
-            # So we can do this in for-loop (Since it will be called AT THE VERY END of the for-loop)
-            if self._pipeline_flush_flag == True:
-                # Reduce ROB entry idx by 2
-                self._ROB_entries_avail_idx = self._ROB_entries_avail_idx - 1   #-2
-                self._running_inst -= 1 #2
-
-                # Clear reservation station for BEQ
-                # self._adder_reserv_st.clear_reserv_content(self._active_instructions[-2].get_reserv_idx())
-
-                # Remove all instructions after the branch from active inst.
-                self._active_instructions.pop()
-                #self._active_instructions.pop()
-
-                # Check what type of inst is the one we want to flush from pipeline
-                opcode_to_remove = inst.get_opcode()
-                inst_reserv_idx = inst.get_reserv_idx()
-                        
-                if opcode_to_remove == 'SD':    # Assume there's no BRNACH AFTER BRANCH
-                    # Delete dependency from the list
-                    # self._dependency_list.pop()
-                    pass
-                elif opcode_to_remove[0] == 'B':
-                    pass
-                else:   # for ADD, SUB, etc. bc you also need to delete entry from RAT
-                    # Delete entry from RAT (remove from end)
-                    if len(self._RAT[inst.get_operand_1()]) != 0:
-                        self._RAT[inst.get_operand_1()].pop()
-
-                    # NOTE: We do not have to remove from dependency list & reservation station bc
-                    # by the time we call pipeline flush, these commands will be in WB -> so reservation & dependency list removed
-                    # So only have to worry about LD (Since it will be in MEM stage)
-                    if inst.get_opcode() == "LD":
-                        # Delete dependency from the list
-                        # if len(self._dependency_list) != 0:
-                        #     self._dependency_list.pop()
-
-                        # Also have to remove it from reservation station
-                        self._load_store_reserv_st.clear_reserv_content(inst_reserv_idx)
-
-                if opcode_to_remove == "ADD" or opcode_to_remove == "SUB" or opcode_to_remove == "ADDI":
-                    self._adder_reserv_st.clear_reserv_content(inst_reserv_idx)
-                elif opcode_to_remove == "ADD.D" or opcode_to_remove == "SUB.D":
-                    self._fp_adder_reserv_st.clear_reserv_content(inst_reserv_idx)
-                elif opcode_to_remove == "MULT.D":
-                    self._fp_mult_reserv_st.clear_reserv_content(inst_reserv_idx)
-
-                # No need to remove dependencies for branch inst (bc it wasn't added)
-
-                # Also need to clear the inst buffer & refill it with CORRECT path
-                self._inst_buffer.clear()
-                # restored_branch_inst = saved_instruction_list[counter_for_restoring_branch]
-                # self._inst_buffer.append(restored_branch_inst)  # restore branch inst
-
-                # label_name = restored_branch_inst[3]
-                # restore CORRECT path (counter_for_restoring_branch = correct idx) in this case
-                for each_inst in saved_instruction_list[counter_for_restoring_branch:]:
-                    self._inst_buffer.append(each_inst)
-
-                # And give misprediction penalty
-                cycle_penalty = self._config_data["misprediction_penalty"]
-
             self._is_commited = False
 
-            if self._is_correctly_predicted == 1: # correct branch prediction
-                print("!!!!!!!!! Branch Prediction: Correctly Predicted !!!!!!!!!!!!", file=self.f)
-                self._is_correctly_predicted = 0
-
-            elif self._is_correctly_predicted == 2: # incorrect branch prediction
-                print("!!!!!!!!! Branch Prediction: Incorrectly Predicted !!!!!!!!!", file=self.f)
-                self._is_correctly_predicted = 0
-
-            if self._pipeline_flush_flag == True:
-                mp_val = self._config_data["misprediction_penalty"]
-                print(f"========> Pipeline Flush Has Occurred. Misprediction Penalty of {mp_val} Applied <=========", file=self.f)
-                self._pipeline_flush_flag = False
-
-
+            # NOTE: This is grabbing instruction from _inst_buffer -> putting them in active inst
             # First, check buffer to see if there's any instructions that need to be fetched
             if len(self._inst_buffer) != 0:
 
@@ -1111,9 +1036,96 @@ class OperatingSystem:
                     self.perform_operation(inst)
                     # ----- Check if we can move to next stage (if move_next_stage flag is True) -----
                     update_inst_stage(inst)
+
+
+                    # NOTE:
+                    # If pipeline flush has occurred -> then the latest, most recent 2 instructions (branch + 1 more inst it ran after) in pipeline are the ones we want to remove
+                    # So we can do this in for-loop (Since it will be called AT THE VERY END of the for-loop)
+                    if self._pipeline_flush_flag == True:
+                        # Reduce ROB entry idx by 2
+                        for delete_inst in self._active_instructions[idx+1:]:
+                            self._ROB_entries_avail_idx = self._ROB_entries_avail_idx - 1   #-2
+                            self._running_inst -= 1 #2
+
+                            # Clear reservation station for BEQ
+                            # self._adder_reserv_st.clear_reserv_content(self._active_instructions[-2].get_reserv_idx())
+
+                            # Remove all instructions after the branch from active inst.
+                            # self._active_instructions.pop()
+                            #self._active_instructions.pop()
+
+                            # Check what type of inst is the one we want to flush from pipeline
+                            opcode_to_remove = delete_inst.get_opcode()
+                            inst_reserv_idx = delete_inst.get_reserv_idx()
+                                
+                            if opcode_to_remove == 'SD':    # Assume there's no BRNACH AFTER BRANCH
+                                # Delete dependency from the list
+                                # self._dependency_list.pop()
+                                pass
+                            elif opcode_to_remove[0] == 'B':
+                                pass
+                            else:   # for ADD, SUB, etc. bc you also need to delete entry from RAT
+                                # Delete entry from RAT (remove from end)
+                                if len(self._RAT[delete_inst.get_operand_1()]) != 0:
+                                    self._RAT[delete_inst.get_operand_1()].pop()
+
+                                # NOTE: We do not have to remove from dependency list & reservation station bc
+                                # by the time we call pipeline flush, these commands will be in WB -> so reservation & dependency list removed
+                                # So only have to worry about LD (Since it will be in MEM stage)
+                                if delete_inst.get_opcode() == "LD":
+                                    # Delete dependency from the list
+                                    # if len(self._dependency_list) != 0:
+                                    #     self._dependency_list.pop()
+
+                                    # Also have to remove it from reservation station
+                                    self._load_store_reserv_st.clear_reserv_content(inst_reserv_idx)
+
+                            if opcode_to_remove == "ADD" or opcode_to_remove == "SUB" or opcode_to_remove == "ADDI":
+                                self._adder_reserv_st.clear_reserv_content(inst_reserv_idx)
+                            elif opcode_to_remove == "ADD.D" or opcode_to_remove == "SUB.D":
+                                self._fp_adder_reserv_st.clear_reserv_content(inst_reserv_idx)
+                            elif opcode_to_remove == "MULT.D":
+                                self._fp_mult_reserv_st.clear_reserv_content(inst_reserv_idx)
+
+                            # No need to remove dependencies for branch inst (bc it wasn't added)
+
+                            # Also need to clear the inst buffer & refill it with CORRECT path
+                            self._inst_buffer.clear()
+                            # restored_branch_inst = saved_instruction_list[counter_for_restoring_branch]
+                            # self._inst_buffer.append(restored_branch_inst)  # restore branch inst
+
+                            # label_name = restored_branch_inst[3]
+                            # restore CORRECT path (counter_for_restoring_branch = correct idx) in this case
+
+                        # NOTE: Find the corect Path
+                        for curr_idx, each_inst in enumerate(saved_instruction_list):
+                            if each_inst[0] == inst.get_opcode() and each_inst[1] == inst.get_operand_1() and each_inst[2] == inst.get_operand_2() and each_inst[3] == inst.get_operand_3():
+                                for each_inst in saved_instruction_list[curr_idx+1:]:
+                                    self._inst_buffer.append(each_inst)
+                        
+                        del self._active_instructions[idx+1:]
+
+                        # And give misprediction penalty
+                        cycle_penalty = self._config_data["misprediction_penalty"]
+
+                        break   # break out from active_inst, rerun
+
                 else:
                     # Set stage to TERMINATED
                     inst.update_stage("Terminated")
+
+            if self._is_correctly_predicted == 1: # correct branch prediction
+                print("!!!!!!!!! Branch Prediction: Correctly Predicted !!!!!!!!!!!!", file=self.f)
+                self._is_correctly_predicted = 0
+
+            elif self._is_correctly_predicted == 2: # incorrect branch prediction
+                print("!!!!!!!!! Branch Prediction: Incorrectly Predicted !!!!!!!!!", file=self.f)
+                self._is_correctly_predicted = 0
+
+            if self._pipeline_flush_flag == True:
+                mp_val = self._config_data["misprediction_penalty"]
+                print(f"========> Pipeline Flush Has Occurred. Misprediction Penalty of {mp_val} Applied <=========", file=self.f)
+                self._pipeline_flush_flag = False
 
             # Print the pipeline            
             self.print_pipeline()
