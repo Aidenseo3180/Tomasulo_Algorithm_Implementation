@@ -62,12 +62,12 @@ Current cycle: 3
 
 LD R1 4(R0) | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:() COMMIT:() 
 
-ADD R3 R1 R1 | ISSUE:(2, 2) EX:(3, 3) MEM:() WB:() COMMIT:() 
+ADD R3 R1 R1 | ISSUE:(2, 2) EX:() MEM:() WB:() COMMIT:() 
 
 LD R2 4(R0) | ISSUE:(3, 3) EX:() MEM:() WB:() COMMIT:() 
 
 Reservation Stations in Current Cycle: 
-Integer Adder: [0, None, None]
+Integer Adder: ['Reserved', None, None]
 FP Adder: [None, None, None]
 FP Multplier: [None, None]
 Load Store: [4.0, 'Reserved', None]
@@ -78,14 +78,14 @@ Current cycle: 4
 
 LD R1 4(R0) | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:() COMMIT:() 
 
-ADD R3 R1 R1 | ISSUE:(2, 2) EX:(3, 3) MEM:() WB:(4, 4) COMMIT:() 
+ADD R3 R1 R1 | ISSUE:(2, 2) EX:() MEM:() WB:() COMMIT:() 
 
 LD R2 4(R0) | ISSUE:(3, 3) EX:(4, 4) MEM:() WB:() COMMIT:() 
 
 SUB R1 R3 R2 | ISSUE:(4, 4) EX:() MEM:() WB:() COMMIT:() 
 
 Reservation Stations in Current Cycle: 
-Integer Adder: [None, 'Reserved', None]
+Integer Adder: ['Reserved', 'Reserved', None]
 FP Adder: [None, None, None]
 FP Multplier: [None, None]
 Load Store: [4.0, 4.0, None]
@@ -96,14 +96,14 @@ Current cycle: 5
 
 LD R1 4(R0) | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:() COMMIT:() 
 
-ADD R3 R1 R1 | ISSUE:(2, 2) EX:(3, 3) MEM:() WB:(4, 4) COMMIT:() 
+ADD R3 R1 R1 | ISSUE:(2, 2) EX:() MEM:() WB:() COMMIT:() 
 
 LD R2 4(R0) | ISSUE:(3, 3) EX:(4, 4) MEM:() WB:() COMMIT:() 
 
 SUB R1 R3 R2 | ISSUE:(4, 4) EX:() MEM:() WB:() COMMIT:() 
 
 Reservation Stations in Current Cycle: 
-Integer Adder: [None, 'Reserved', None]
+Integer Adder: ['Reserved', 'Reserved', None]
 FP Adder: [None, None, None]
 FP Multplier: [None, None]
 Load Store: [4.0, 4.0, None]
@@ -114,14 +114,14 @@ Current cycle: 6
 
 LD R1 4(R0) | ISSUE:(1, 1) EX:(2, 2) MEM:(3, 6) WB:() COMMIT:() 
 
-ADD R3 R1 R1 | ISSUE:(2, 2) EX:(3, 3) MEM:() WB:(4, 4) COMMIT:() 
+ADD R3 R1 R1 | ISSUE:(2, 2) EX:() MEM:() WB:() COMMIT:() 
 
 LD R2 4(R0) | ISSUE:(3, 3) EX:(4, 4) MEM:() WB:() COMMIT:() 
 
 SUB R1 R3 R2 | ISSUE:(4, 4) EX:() MEM:() WB:() COMMIT:() 
 
 Reservation Stations in Current Cycle: 
-Integer Adder: [None, 'Reserved', None]
+Integer Adder: ['Reserved', 'Reserved', None]
 FP Adder: [None, None, None]
 FP Multplier: [None, None]
 Load Store: [None, 4.0, None]
@@ -132,14 +132,14 @@ Current cycle: 7
 
 LD R1 4(R0) | ISSUE:(1, 1) EX:(2, 2) MEM:(3, 6) WB:(7, 7) COMMIT:() 
 
-ADD R3 R1 R1 | ISSUE:(2, 2) EX:(3, 3) MEM:() WB:(4, 4) COMMIT:() 
+ADD R3 R1 R1 | ISSUE:(2, 2) EX:(7, 7) MEM:() WB:() COMMIT:() 
 
 LD R2 4(R0) | ISSUE:(3, 3) EX:(4, 4) MEM:() WB:() COMMIT:() 
 
-SUB R1 R3 R2 | ISSUE:(4, 4) EX:(7, 7) MEM:() WB:() COMMIT:() 
+SUB R1 R3 R2 | ISSUE:(4, 4) EX:() MEM:() WB:() COMMIT:() 
 
 Reservation Stations in Current Cycle: 
-Integer Adder: [None, 0, None]
+Integer Adder: [8.0, 'Reserved', None]
 FP Adder: [None, None, None]
 FP Multplier: [None, None]
 Load Store: [None, 4.0, None]
@@ -150,14 +150,14 @@ Current cycle: 8
 
 LD R1 4(R0) | ISSUE:(1, 1) EX:(2, 2) MEM:(3, 6) WB:(7, 7) COMMIT:(8, 8) 
 
-ADD R3 R1 R1 | ISSUE:(2, 2) EX:(3, 3) MEM:() WB:(4, 4) COMMIT:() 
+ADD R3 R1 R1 | ISSUE:(2, 2) EX:(7, 7) MEM:() WB:(8, 8) COMMIT:() 
 
 LD R2 4(R0) | ISSUE:(3, 3) EX:(4, 4) MEM:(5, 8) WB:() COMMIT:() 
 
-SUB R1 R3 R2 | ISSUE:(4, 4) EX:(7, 7) MEM:() WB:(8, 8) COMMIT:() 
+SUB R1 R3 R2 | ISSUE:(4, 4) EX:() MEM:() WB:() COMMIT:() 
 
 Reservation Stations in Current Cycle: 
-Integer Adder: [None, None, None]
+Integer Adder: [None, 'Reserved', None]
 FP Adder: [None, None, None]
 FP Multplier: [None, None]
 Load Store: [None, None, None]
@@ -168,14 +168,14 @@ Current cycle: 9
 
 LD R1 4(R0) | ISSUE:(1, 1) EX:(2, 2) MEM:(3, 6) WB:(7, 7) COMMIT:(8, 8) 
 
-ADD R3 R1 R1 | ISSUE:(2, 2) EX:(3, 3) MEM:() WB:(4, 4) COMMIT:(9, 9) 
+ADD R3 R1 R1 | ISSUE:(2, 2) EX:(7, 7) MEM:() WB:(8, 8) COMMIT:(9, 9) 
 
 LD R2 4(R0) | ISSUE:(3, 3) EX:(4, 4) MEM:(5, 8) WB:(9, 9) COMMIT:() 
 
-SUB R1 R3 R2 | ISSUE:(4, 4) EX:(7, 7) MEM:() WB:(8, 8) COMMIT:() 
+SUB R1 R3 R2 | ISSUE:(4, 4) EX:(9, 9) MEM:() WB:() COMMIT:() 
 
 Reservation Stations in Current Cycle: 
-Integer Adder: [None, None, None]
+Integer Adder: [None, 4.0, None]
 FP Adder: [None, None, None]
 FP Multplier: [None, None]
 Load Store: [None, None, None]
@@ -186,11 +186,11 @@ Current cycle: 10
 
 LD R1 4(R0) | ISSUE:(1, 1) EX:(2, 2) MEM:(3, 6) WB:(7, 7) COMMIT:(8, 8) 
 
-ADD R3 R1 R1 | ISSUE:(2, 2) EX:(3, 3) MEM:() WB:(4, 4) COMMIT:(9, 9) 
+ADD R3 R1 R1 | ISSUE:(2, 2) EX:(7, 7) MEM:() WB:(8, 8) COMMIT:(9, 9) 
 
 LD R2 4(R0) | ISSUE:(3, 3) EX:(4, 4) MEM:(5, 8) WB:(9, 9) COMMIT:(10, 10) 
 
-SUB R1 R3 R2 | ISSUE:(4, 4) EX:(7, 7) MEM:() WB:(8, 8) COMMIT:() 
+SUB R1 R3 R2 | ISSUE:(4, 4) EX:(9, 9) MEM:() WB:(10, 10) COMMIT:() 
 
 Reservation Stations in Current Cycle: 
 Integer Adder: [None, None, None]
@@ -204,11 +204,11 @@ Current cycle: 11
 
 LD R1 4(R0) | ISSUE:(1, 1) EX:(2, 2) MEM:(3, 6) WB:(7, 7) COMMIT:(8, 8) 
 
-ADD R3 R1 R1 | ISSUE:(2, 2) EX:(3, 3) MEM:() WB:(4, 4) COMMIT:(9, 9) 
+ADD R3 R1 R1 | ISSUE:(2, 2) EX:(7, 7) MEM:() WB:(8, 8) COMMIT:(9, 9) 
 
 LD R2 4(R0) | ISSUE:(3, 3) EX:(4, 4) MEM:(5, 8) WB:(9, 9) COMMIT:(10, 10) 
 
-SUB R1 R3 R2 | ISSUE:(4, 4) EX:(7, 7) MEM:() WB:(8, 8) COMMIT:(11, 11) 
+SUB R1 R3 R2 | ISSUE:(4, 4) EX:(9, 9) MEM:() WB:(10, 10) COMMIT:(11, 11) 
 
 Reservation Stations in Current Cycle: 
 Integer Adder: [None, None, None]
@@ -254,11 +254,11 @@ Floating-Point Mult Reservation Station:
 
 LD R1 4(R0) | ISSUE:(1, 1) EX:(2, 2) MEM:(3, 6) WB:(7, 7) COMMIT:(8, 8) 
 
-ADD R3 R1 R1 | ISSUE:(2, 2) EX:(3, 3) MEM:() WB:(4, 4) COMMIT:(9, 9) 
+ADD R3 R1 R1 | ISSUE:(2, 2) EX:(7, 7) MEM:() WB:(8, 8) COMMIT:(9, 9) 
 
 LD R2 4(R0) | ISSUE:(3, 3) EX:(4, 4) MEM:(5, 8) WB:(9, 9) COMMIT:(10, 10) 
 
-SUB R1 R3 R2 | ISSUE:(4, 4) EX:(7, 7) MEM:() WB:(8, 8) COMMIT:(11, 11) 
+SUB R1 R3 R2 | ISSUE:(4, 4) EX:(9, 9) MEM:() WB:(10, 10) COMMIT:(11, 11) 
 
 
 ***************************
@@ -267,7 +267,7 @@ SUB R1 R3 R2 | ISSUE:(4, 4) EX:(7, 7) MEM:() WB:(8, 8) COMMIT:(11, 11)
 
 Integer Register
 
-R0:4  R1:0  R2:4.0  R3:0  R4:0  R5:0  R6:0  R7:0  R8:0  R9:0  R10:0  R11:0  R12:0  R13:0  R14:0  R15:0  
+R0:4  R1:4.0  R2:4.0  R3:8.0  R4:0  R5:0  R6:0  R7:0  R8:0  R9:0  R10:0  R11:0  R12:0  R13:0  R14:0  R15:0  
 R16:0  R17:0  R18:0  R19:0  R20:0  R21:0  R22:0  R23:0  R24:0  R25:0  R26:0  R27:0  R28:0  R29:0  R30:0  R31:0  
 
 Floating-Point Register

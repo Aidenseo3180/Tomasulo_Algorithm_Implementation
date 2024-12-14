@@ -322,7 +322,7 @@ class OperatingSystem:
         self._cycle = 0          # keep a track of cycles
 
         # List that keeps a track of dependent register
-        self._dependency_list = []
+        # self._dependency_list = []
 
         # Load Store Queue to keep load/store inst in order (use list like a queue)
         # Reservation station for memory unit
@@ -372,15 +372,13 @@ class OperatingSystem:
             if op in ["LD", "SD"]:
                 # Load and Store instructions
                 if op == "LD":
-                    if stage == "WB" or stage == "COMMIT":
+                    if stage == "WB":
                         continue
 
                     des = inst.get_operand_1()  # Destination register
                     src1 = inst.get_operand_2()  # Base register as source 1
                     src2 = None
                 elif op == "SD":
-                    if stage == "COMMIT":
-                        continue
 
                     des = None  # Store doesn't have a destination
                     src1 = inst.get_operand_1()  # Source register to store
@@ -388,14 +386,10 @@ class OperatingSystem:
                     src2 = None
             elif op[0] == 'B':
                 # if branch, only check 1 and 2
-                if stage == "COMMIT":
-                    continue
                 des = None
                 src1 = inst.get_operand_1()
                 src2 = inst.get_operand_2()
             else:
-                if stage == "COMMIT":
-                    continue
                 des = inst.get_operand_1()
                 src1 = inst.get_operand_2()
                 src2 = inst.get_operand_3()
@@ -428,7 +422,9 @@ class OperatingSystem:
             src1 = current_inst.get_operand_2()
             src2 = current_inst.get_operand_3()
 
-        for prev_idx, (prev_stage, prev_op, prev_dest, prev_src1, prev_src2) in enumerate(self._parsed_instructions[:-1]):
+        for prev_idx, (prev_stage, prev_op, prev_dest, prev_src1, prev_src2) in enumerate(self._parsed_instructions):
+            # print("prev: ", prev_dest, prev_src1, prev_src2)
+            # print("=>", des, src1, src2)
             if des == prev_dest:
                 return True  # WAW
             if des == prev_src1 or des == prev_src2:
@@ -556,11 +552,11 @@ class OperatingSystem:
                     # Clear the reservation station entry
                     # self._adder_reserv_st.clear_reserv_content(inst_reserv_idx)
                     # remove register from dependency list -> allow other instructions w/ dependencies to run
-                    if operand_1 not in self._dependency_list:
-                        self._dependency_list.append(operand_1)
-                    else:
-                    #    self.remove_from_dependency_list(operand_1)
-                        pass
+                    # if operand_1 not in self._dependency_list:
+                    #     self._dependency_list.append(operand_1)
+                    # else:
+                    # #    self.remove_from_dependency_list(operand_1)
+                    #     pass
 
                 else:
                     inst.set_move_to_next_stage()      # takes 1 cycle in COMMIT
@@ -609,7 +605,9 @@ class OperatingSystem:
                 else:
                     inst.set_move_to_next_stage()      # takes 1 cycle in COMMIT
             case 'SUB.D':
-                if current_stage == "EX":
+                if current_stage == "ISSUE":
+                    inst.set_move_to_next_stage()  # takes 1 cycle in EX
+                elif current_stage == "EX":
                     if is_executed == False:
                         # if is_fp == True:
                         res = self._fp_register[operand_2] - self._fp_register[operand_3]
@@ -969,7 +967,8 @@ class OperatingSystem:
                         
                 if opcode_to_remove == 'SD':    # Assume there's no BRNACH AFTER BRANCH
                     # Delete dependency from the list
-                    self._dependency_list.pop()
+                    # self._dependency_list.pop()
+                    pass
                 elif opcode_to_remove[0] == 'B':
                     pass
                 else:   # for ADD, SUB, etc. bc you also need to delete entry from RAT
@@ -982,8 +981,8 @@ class OperatingSystem:
                     # So only have to worry about LD (Since it will be in MEM stage)
                     if inst.get_opcode() == "LD":
                         # Delete dependency from the list
-                        if len(self._dependency_list) != 0:
-                            self._dependency_list.pop()
+                        # if len(self._dependency_list) != 0:
+                        #     self._dependency_list.pop()
 
                         # Also have to remove it from reservation station
                         self._load_store_reserv_st.clear_reserv_content(inst_reserv_idx)
@@ -1057,6 +1056,7 @@ class OperatingSystem:
                         # Add ISSUE record to inst to keep a track of things
                         #if self._is_prev_inst_branch == False:
                         inst.update_stage_cycle_counter("ISSUE", self._cycle, self._cycle)
+                        
                         # else:   # if prev inst is branch -> set next inst to EX stage
                         #     inst.update_stage_cycle_counter("EX", self._cycle, self._cycle)
                         #     self._is_prev_inst_branch = False
@@ -1093,10 +1093,10 @@ class OperatingSystem:
                                 pass
 
                             pass
-                        else:
-                            if inst.get_operand_1() not in self._dependency_list:
-                                if inst.get_operand_1() != inst.get_operand_2() and inst.get_operand_1() != inst.get_operand_3():
-                                    self._dependency_list.append(inst.get_operand_1())
+                        # else:
+                        #     if inst.get_operand_1() not in self._dependency_list:
+                        #         if inst.get_operand_1() != inst.get_operand_2() and inst.get_operand_1() != inst.get_operand_3():
+                        #             self._dependency_list.append(inst.get_operand_1())
 
                 else:
                     cycle_penalty -= 1
