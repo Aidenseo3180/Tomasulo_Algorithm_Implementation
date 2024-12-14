@@ -53,6 +53,7 @@ Integer Adder: [2, 'Reserved', None]
 FP Adder: [None, None, None]
 FP Multplier: [None, None]
 Load Store: [None, None, None]
+!!!!!!!!! Branch Prediction: Correctly Predicted !!!!!!!!!!!!
 
 --------------------------------------
 
@@ -69,7 +70,6 @@ Integer Adder: [None, None, 'Reserved']
 FP Adder: [None, None, None]
 FP Multplier: [None, None]
 Load Store: [None, None, None]
-!!!!!!!!! Branch Prediction: Correctly Predicted !!!!!!!!!!!!
 
 --------------------------------------
 

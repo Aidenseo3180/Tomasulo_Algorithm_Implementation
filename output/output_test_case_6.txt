@@ -53,6 +53,8 @@ Integer Adder: [3, 'Reserved', None]
 FP Adder: [None, None, None]
 FP Multplier: [None, None]
 Load Store: [None, None, None]
+!!!!!!!!! Branch Prediction: Incorrectly Predicted !!!!!!!!!
+========> Pipeline Flush Has Occurred. Misprediction Penalty of 3 Applied <=========
 
 --------------------------------------
 
@@ -62,15 +64,11 @@ SUB R3 R1 R2 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:()
 
 BEQ R1 R2 Label | ISSUE:(2, 2) EX:(3, 3) MEM:() WB:() COMMIT:() 
 
-SUB R8 R9 R10 | ISSUE:(3, 3) EX:() MEM:() WB:() COMMIT:() 
-
 Reservation Stations in Current Cycle: 
-Integer Adder: [None, None, 'Reserved']
+Integer Adder: [None, None, None]
 FP Adder: [None, None, None]
 FP Multplier: [None, None]
 Load Store: [None, None, None]
-!!!!!!!!! Branch Prediction: Incorrectly Predicted !!!!!!!!!
-========> Pipeline Flush Has Occurred. Misprediction Penalty of 3 Applied <=========
 
 --------------------------------------
 
