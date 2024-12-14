@@ -1,7 +1,7 @@
                 # of rs     Cycles in EX    Cycles in MEM   # of FUs
-Integer adder      3               1                            1
+Integer adder      1               1                            1
 FP adder           3               3                            1
-FP multiplier      2               20                           1
+FP multiplier      1               20                           1
 LoadStore Unit     3               1               4            1
 
 ROB_entries 128
@@ -9,11 +9,16 @@ CDB_buffer_entries 1
 misprediction_penalty 3
 
 R0 4
+R3 5
+R4 5
 
-MEM[8] 4
+F2 3.0
+F3 5.0
+F5 15.0
+F6 20.0
 
-LD R1,4(R0)
-ADD R3,R1,R1
-LD R2,4(R0)
-SUB R1,R3,R2
+ADDI R1,R0,1
+SUB R2,R3,R4
+MULT.D F1,F2,F3
+MULT.D F4,F5,F6
 
