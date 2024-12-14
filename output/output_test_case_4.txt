@@ -11,11 +11,11 @@ Functional Units:
  'fp_multiplier': {'cycles_in_ex': 20,
                    'cycles_in_mem': None,
                    'f_units': 1,
-                   'rs': 2},
+                   'rs': 1},
  'integer_adder': {'cycles_in_ex': 1,
                    'cycles_in_mem': None,
                    'f_units': 1,
-                   'rs': 3},
+                   'rs': 1},
  'load_store_unit': {'cycles_in_ex': 1,
                      'cycles_in_mem': 4,
                      'f_units': 1,
@@ -23,197 +23,825 @@ Functional Units:
 ROB Entries: 128
 CDB Buffer Entries: 1
 Misprediction Penalty: 3
-Registers:  {'R0': 4}
-Memory:  {'8': 4.0}
+Registers:  {'R0': 4, 'R3': 5, 'R4': 5, 'F2': 3.0, 'F3': 5.0, 'F5': 15.0, 'F6': 20.0}
+Memory:  {}
 Label:  {}
-Instructions:  ['LD R1,4(R0)', 'ADD R3,R1,R1', 'LD R2,4(R0)', 'SUB R1,R3,R2']
-['Reserved', None, None]
+Instructions:  ['ADDI R1,R0,1', 'SUB R2,R3,R4', 'MULT.D F1,F2,F3', 'MULT.D F4,F5,F6']
 
 --------------------------------------
 
 Current cycle: 1
 
-LD R1 4(R0) | ISSUE:(1, 1) EX:() MEM:() WB:() COMMIT:() 
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:() MEM:() WB:() COMMIT:() 
 
 Reservation Stations in Current Cycle: 
-Integer Adder: [None, None, None]
+Integer Adder: ['Reserved']
 FP Adder: [None, None, None]
-FP Multplier: [None, None]
-Load Store: ['Reserved', None, None]
+FP Multplier: [None]
+Load Store: [None, None, None]
 
 --------------------------------------
 
 Current cycle: 2
 
-LD R1 4(R0) | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:() COMMIT:() 
-
-ADD R3 R1 R1 | ISSUE:(2, 2) EX:() MEM:() WB:() COMMIT:() 
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:() COMMIT:() 
 
 Reservation Stations in Current Cycle: 
-Integer Adder: ['Reserved', None, None]
+Integer Adder: [5]
 FP Adder: [None, None, None]
-FP Multplier: [None, None]
-Load Store: [4.0, None, None]
-[4.0, 'Reserved', None]
+FP Multplier: [None]
+Load Store: [None, None, None]
 
 --------------------------------------
 
 Current cycle: 3
 
-LD R1 4(R0) | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:() COMMIT:() 
-
-ADD R3 R1 R1 | ISSUE:(2, 2) EX:() MEM:() WB:() COMMIT:() 
-
-LD R2 4(R0) | ISSUE:(3, 3) EX:() MEM:() WB:() COMMIT:() 
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:() 
 
 Reservation Stations in Current Cycle: 
-Integer Adder: ['Reserved', None, None]
+Integer Adder: [None]
 FP Adder: [None, None, None]
-FP Multplier: [None, None]
-Load Store: [4.0, 'Reserved', None]
+FP Multplier: [None]
+Load Store: [None, None, None]
 
 --------------------------------------
 
 Current cycle: 4
 
-LD R1 4(R0) | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:() COMMIT:() 
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
 
-ADD R3 R1 R1 | ISSUE:(2, 2) EX:() MEM:() WB:() COMMIT:() 
-
-LD R2 4(R0) | ISSUE:(3, 3) EX:(4, 4) MEM:() WB:() COMMIT:() 
-
-SUB R1 R3 R2 | ISSUE:(4, 4) EX:() MEM:() WB:() COMMIT:() 
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:() MEM:() WB:() COMMIT:() 
 
 Reservation Stations in Current Cycle: 
-Integer Adder: ['Reserved', 'Reserved', None]
+Integer Adder: ['Reserved']
 FP Adder: [None, None, None]
-FP Multplier: [None, None]
-Load Store: [4.0, 4.0, None]
+FP Multplier: [None]
+Load Store: [None, None, None]
 
 --------------------------------------
 
 Current cycle: 5
 
-LD R1 4(R0) | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:() COMMIT:() 
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
 
-ADD R3 R1 R1 | ISSUE:(2, 2) EX:() MEM:() WB:() COMMIT:() 
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:() COMMIT:() 
 
-LD R2 4(R0) | ISSUE:(3, 3) EX:(4, 4) MEM:() WB:() COMMIT:() 
-
-SUB R1 R3 R2 | ISSUE:(4, 4) EX:() MEM:() WB:() COMMIT:() 
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:() MEM:() WB:() COMMIT:() 
 
 Reservation Stations in Current Cycle: 
-Integer Adder: ['Reserved', 'Reserved', None]
+Integer Adder: [0]
 FP Adder: [None, None, None]
-FP Multplier: [None, None]
-Load Store: [4.0, 4.0, None]
+FP Multplier: ['Reserved']
+Load Store: [None, None, None]
 
 --------------------------------------
 
 Current cycle: 6
 
-LD R1 4(R0) | ISSUE:(1, 1) EX:(2, 2) MEM:(3, 6) WB:() COMMIT:() 
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
 
-ADD R3 R1 R1 | ISSUE:(2, 2) EX:() MEM:() WB:() COMMIT:() 
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:() 
 
-LD R2 4(R0) | ISSUE:(3, 3) EX:(4, 4) MEM:() WB:() COMMIT:() 
-
-SUB R1 R3 R2 | ISSUE:(4, 4) EX:() MEM:() WB:() COMMIT:() 
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:() MEM:() WB:() COMMIT:() 
 
 Reservation Stations in Current Cycle: 
-Integer Adder: ['Reserved', 'Reserved', None]
+Integer Adder: [None]
 FP Adder: [None, None, None]
-FP Multplier: [None, None]
-Load Store: [None, 4.0, None]
+FP Multplier: [15.0]
+Load Store: [None, None, None]
 
 --------------------------------------
 
 Current cycle: 7
 
-LD R1 4(R0) | ISSUE:(1, 1) EX:(2, 2) MEM:(3, 6) WB:(7, 7) COMMIT:() 
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
 
-ADD R3 R1 R1 | ISSUE:(2, 2) EX:(7, 7) MEM:() WB:() COMMIT:() 
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
 
-LD R2 4(R0) | ISSUE:(3, 3) EX:(4, 4) MEM:() WB:() COMMIT:() 
-
-SUB R1 R3 R2 | ISSUE:(4, 4) EX:() MEM:() WB:() COMMIT:() 
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:() MEM:() WB:() COMMIT:() 
 
 Reservation Stations in Current Cycle: 
-Integer Adder: [8.0, 'Reserved', None]
+Integer Adder: [None]
 FP Adder: [None, None, None]
-FP Multplier: [None, None]
-Load Store: [None, 4.0, None]
+FP Multplier: [15.0]
+Load Store: [None, None, None]
 
 --------------------------------------
 
 Current cycle: 8
 
-LD R1 4(R0) | ISSUE:(1, 1) EX:(2, 2) MEM:(3, 6) WB:(7, 7) COMMIT:(8, 8) 
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
 
-ADD R3 R1 R1 | ISSUE:(2, 2) EX:(7, 7) MEM:() WB:(8, 8) COMMIT:() 
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
 
-LD R2 4(R0) | ISSUE:(3, 3) EX:(4, 4) MEM:(5, 8) WB:() COMMIT:() 
-
-SUB R1 R3 R2 | ISSUE:(4, 4) EX:() MEM:() WB:() COMMIT:() 
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:() MEM:() WB:() COMMIT:() 
 
 Reservation Stations in Current Cycle: 
-Integer Adder: [None, 'Reserved', None]
+Integer Adder: [None]
 FP Adder: [None, None, None]
-FP Multplier: [None, None]
+FP Multplier: [15.0]
 Load Store: [None, None, None]
 
 --------------------------------------
 
 Current cycle: 9
 
-LD R1 4(R0) | ISSUE:(1, 1) EX:(2, 2) MEM:(3, 6) WB:(7, 7) COMMIT:(8, 8) 
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
 
-ADD R3 R1 R1 | ISSUE:(2, 2) EX:(7, 7) MEM:() WB:(8, 8) COMMIT:(9, 9) 
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
 
-LD R2 4(R0) | ISSUE:(3, 3) EX:(4, 4) MEM:(5, 8) WB:(9, 9) COMMIT:() 
-
-SUB R1 R3 R2 | ISSUE:(4, 4) EX:(9, 9) MEM:() WB:() COMMIT:() 
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:() MEM:() WB:() COMMIT:() 
 
 Reservation Stations in Current Cycle: 
-Integer Adder: [None, 4.0, None]
+Integer Adder: [None]
 FP Adder: [None, None, None]
-FP Multplier: [None, None]
+FP Multplier: [15.0]
 Load Store: [None, None, None]
 
 --------------------------------------
 
 Current cycle: 10
 
-LD R1 4(R0) | ISSUE:(1, 1) EX:(2, 2) MEM:(3, 6) WB:(7, 7) COMMIT:(8, 8) 
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
 
-ADD R3 R1 R1 | ISSUE:(2, 2) EX:(7, 7) MEM:() WB:(8, 8) COMMIT:(9, 9) 
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
 
-LD R2 4(R0) | ISSUE:(3, 3) EX:(4, 4) MEM:(5, 8) WB:(9, 9) COMMIT:(10, 10) 
-
-SUB R1 R3 R2 | ISSUE:(4, 4) EX:(9, 9) MEM:() WB:(10, 10) COMMIT:() 
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:() MEM:() WB:() COMMIT:() 
 
 Reservation Stations in Current Cycle: 
-Integer Adder: [None, None, None]
+Integer Adder: [None]
 FP Adder: [None, None, None]
-FP Multplier: [None, None]
+FP Multplier: [15.0]
 Load Store: [None, None, None]
 
 --------------------------------------
 
 Current cycle: 11
 
-LD R1 4(R0) | ISSUE:(1, 1) EX:(2, 2) MEM:(3, 6) WB:(7, 7) COMMIT:(8, 8) 
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
 
-ADD R3 R1 R1 | ISSUE:(2, 2) EX:(7, 7) MEM:() WB:(8, 8) COMMIT:(9, 9) 
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
 
-LD R2 4(R0) | ISSUE:(3, 3) EX:(4, 4) MEM:(5, 8) WB:(9, 9) COMMIT:(10, 10) 
-
-SUB R1 R3 R2 | ISSUE:(4, 4) EX:(9, 9) MEM:() WB:(10, 10) COMMIT:(11, 11) 
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:() MEM:() WB:() COMMIT:() 
 
 Reservation Stations in Current Cycle: 
-Integer Adder: [None, None, None]
+Integer Adder: [None]
 FP Adder: [None, None, None]
-FP Multplier: [None, None]
+FP Multplier: [15.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 12
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [15.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 13
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [15.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 14
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [15.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 15
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [15.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 16
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [15.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 17
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [15.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 18
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [15.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 19
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [15.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 20
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [15.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 21
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [15.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 22
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [15.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 23
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [15.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 24
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [15.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 25
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:(6, 25) MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [15.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 26
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:(6, 25) MEM:() WB:(26, 26) COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [None]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 27
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:(6, 25) MEM:() WB:(26, 26) COMMIT:(27, 27) 
+
+MULT.D F4 F5 F6 | ISSUE:(27, 27) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: ['Reserved']
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 28
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:(6, 25) MEM:() WB:(26, 26) COMMIT:(27, 27) 
+
+MULT.D F4 F5 F6 | ISSUE:(27, 27) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [300.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 29
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:(6, 25) MEM:() WB:(26, 26) COMMIT:(27, 27) 
+
+MULT.D F4 F5 F6 | ISSUE:(27, 27) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [300.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 30
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:(6, 25) MEM:() WB:(26, 26) COMMIT:(27, 27) 
+
+MULT.D F4 F5 F6 | ISSUE:(27, 27) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [300.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 31
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:(6, 25) MEM:() WB:(26, 26) COMMIT:(27, 27) 
+
+MULT.D F4 F5 F6 | ISSUE:(27, 27) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [300.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 32
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:(6, 25) MEM:() WB:(26, 26) COMMIT:(27, 27) 
+
+MULT.D F4 F5 F6 | ISSUE:(27, 27) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [300.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 33
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:(6, 25) MEM:() WB:(26, 26) COMMIT:(27, 27) 
+
+MULT.D F4 F5 F6 | ISSUE:(27, 27) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [300.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 34
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:(6, 25) MEM:() WB:(26, 26) COMMIT:(27, 27) 
+
+MULT.D F4 F5 F6 | ISSUE:(27, 27) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [300.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 35
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:(6, 25) MEM:() WB:(26, 26) COMMIT:(27, 27) 
+
+MULT.D F4 F5 F6 | ISSUE:(27, 27) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [300.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 36
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:(6, 25) MEM:() WB:(26, 26) COMMIT:(27, 27) 
+
+MULT.D F4 F5 F6 | ISSUE:(27, 27) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [300.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 37
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:(6, 25) MEM:() WB:(26, 26) COMMIT:(27, 27) 
+
+MULT.D F4 F5 F6 | ISSUE:(27, 27) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [300.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 38
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:(6, 25) MEM:() WB:(26, 26) COMMIT:(27, 27) 
+
+MULT.D F4 F5 F6 | ISSUE:(27, 27) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [300.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 39
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:(6, 25) MEM:() WB:(26, 26) COMMIT:(27, 27) 
+
+MULT.D F4 F5 F6 | ISSUE:(27, 27) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [300.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 40
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:(6, 25) MEM:() WB:(26, 26) COMMIT:(27, 27) 
+
+MULT.D F4 F5 F6 | ISSUE:(27, 27) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [300.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 41
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:(6, 25) MEM:() WB:(26, 26) COMMIT:(27, 27) 
+
+MULT.D F4 F5 F6 | ISSUE:(27, 27) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [300.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 42
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:(6, 25) MEM:() WB:(26, 26) COMMIT:(27, 27) 
+
+MULT.D F4 F5 F6 | ISSUE:(27, 27) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [300.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 43
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:(6, 25) MEM:() WB:(26, 26) COMMIT:(27, 27) 
+
+MULT.D F4 F5 F6 | ISSUE:(27, 27) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [300.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 44
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:(6, 25) MEM:() WB:(26, 26) COMMIT:(27, 27) 
+
+MULT.D F4 F5 F6 | ISSUE:(27, 27) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [300.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 45
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:(6, 25) MEM:() WB:(26, 26) COMMIT:(27, 27) 
+
+MULT.D F4 F5 F6 | ISSUE:(27, 27) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [300.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 46
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:(6, 25) MEM:() WB:(26, 26) COMMIT:(27, 27) 
+
+MULT.D F4 F5 F6 | ISSUE:(27, 27) EX:() MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [300.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 47
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:(6, 25) MEM:() WB:(26, 26) COMMIT:(27, 27) 
+
+MULT.D F4 F5 F6 | ISSUE:(27, 27) EX:(28, 47) MEM:() WB:() COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [300.0]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 48
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:(6, 25) MEM:() WB:(26, 26) COMMIT:(27, 27) 
+
+MULT.D F4 F5 F6 | ISSUE:(27, 27) EX:(28, 47) MEM:() WB:(48, 48) COMMIT:() 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [None]
+Load Store: [None, None, None]
+
+--------------------------------------
+
+Current cycle: 49
+
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
+
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
+
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:(6, 25) MEM:() WB:(26, 26) COMMIT:(27, 27) 
+
+MULT.D F4 F5 F6 | ISSUE:(27, 27) EX:(28, 47) MEM:() WB:(48, 48) COMMIT:(49, 49) 
+
+Reservation Stations in Current Cycle: 
+Integer Adder: [None]
+FP Adder: [None, None, None]
+FP Multplier: [None]
 Load Store: [None, None, None]
 
 
@@ -234,7 +862,7 @@ Pipeline Finished, Start Printing the Final Overall Result...
 
         Adder Reservation Station: 
 -----------------------------------------
-[None, None, None]
+[None]
 
 Floating-Point Adder Reservation Station:
 -----------------------------------------
@@ -242,7 +870,7 @@ Floating-Point Adder Reservation Station:
 
 Floating-Point Mult Reservation Station:
 -----------------------------------------
-[None, None]
+[None]
 
     Load Store Reservation Station: 
 -----------------------------------------
@@ -252,13 +880,13 @@ Floating-Point Mult Reservation Station:
 * Instruction Pipeline Status *
 *******************************
 
-LD R1 4(R0) | ISSUE:(1, 1) EX:(2, 2) MEM:(3, 6) WB:(7, 7) COMMIT:(8, 8) 
+ADDI R1 R0 1 | ISSUE:(1, 1) EX:(2, 2) MEM:() WB:(3, 3) COMMIT:(4, 4) 
 
-ADD R3 R1 R1 | ISSUE:(2, 2) EX:(7, 7) MEM:() WB:(8, 8) COMMIT:(9, 9) 
+SUB R2 R3 R4 | ISSUE:(4, 4) EX:(5, 5) MEM:() WB:(6, 6) COMMIT:(7, 7) 
 
-LD R2 4(R0) | ISSUE:(3, 3) EX:(4, 4) MEM:(5, 8) WB:(9, 9) COMMIT:(10, 10) 
+MULT.D F1 F2 F3 | ISSUE:(5, 5) EX:(6, 25) MEM:() WB:(26, 26) COMMIT:(27, 27) 
 
-SUB R1 R3 R2 | ISSUE:(4, 4) EX:(9, 9) MEM:() WB:(10, 10) COMMIT:(11, 11) 
+MULT.D F4 F5 F6 | ISSUE:(27, 27) EX:(28, 47) MEM:() WB:(48, 48) COMMIT:(49, 49) 
 
 
 ***************************
@@ -267,19 +895,19 @@ SUB R1 R3 R2 | ISSUE:(4, 4) EX:(9, 9) MEM:() WB:(10, 10) COMMIT:(11, 11)
 
 Integer Register
 
-R0:4  R1:4.0  R2:4.0  R3:8.0  R4:0  R5:0  R6:0  R7:0  R8:0  R9:0  R10:0  R11:0  R12:0  R13:0  R14:0  R15:0  
+R0:4  R1:5  R2:0  R3:5  R4:5  R5:0  R6:0  R7:0  R8:0  R9:0  R10:0  R11:0  R12:0  R13:0  R14:0  R15:0  
 R16:0  R17:0  R18:0  R19:0  R20:0  R21:0  R22:0  R23:0  R24:0  R25:0  R26:0  R27:0  R28:0  R29:0  R30:0  R31:0  
 
 Floating-Point Register
 
-F0:0  F1:0  F2:0  F3:0  F4:0  F5:0  F6:0  F7:0  F8:0  F9:0  F10:0  F11:0  F12:0  F13:0  F14:0  F15:0  
+F0:0  F1:15.0  F2:3.0  F3:5.0  F4:300.0  F5:15.0  F6:20.0  F7:0  F8:0  F9:0  F10:0  F11:0  F12:0  F13:0  F14:0  F15:0  
 F16:0  F17:0  F18:0  F19:0  F20:0  F21:0  F22:0  F23:0  F24:0  F25:0  F26:0  F27:0  F28:0  F29:0  F30:0  F31:0  
 
 *************************
 * Memory Content Status *
 *************************
 
-Memory[0]:0  Memory[4]:0  Memory[8]:4.0  Memory[12]:0  Memory[16]:0  Memory[20]:0  Memory[24]:0  Memory[28]:0  
+Memory[0]:0  Memory[4]:0  Memory[8]:0  Memory[12]:0  Memory[16]:0  Memory[20]:0  Memory[24]:0  Memory[28]:0  
 Memory[32]:0  Memory[36]:0  Memory[40]:0  Memory[44]:0  Memory[48]:0  Memory[52]:0  Memory[56]:0  
 Memory[60]:0  Memory[64]:0  Memory[68]:0  Memory[72]:0  Memory[76]:0  Memory[80]:0  Memory[84]:0  
 Memory[88]:0  Memory[92]:0  Memory[96]:0  Memory[100]:0  Memory[104]:0  Memory[108]:0  Memory[112]:0  
@@ -290,7 +918,7 @@ Memory[200]:0  Memory[204]:0  Memory[208]:0  Memory[212]:0  Memory[216]:0  Memor
 Memory[228]:0  Memory[232]:0  Memory[236]:0  Memory[240]:0  Memory[244]:0  Memory[248]:0  Memory[252]:0  
 
 
-Total number of cycles: 11
+Total number of cycles: 49
 
 
 **********************************
